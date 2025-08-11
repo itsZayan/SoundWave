@@ -20,7 +20,10 @@ import {
   Sparkles,
   ArrowRight,
   Gauge,
-  Users
+  Users,
+  Info,
+  X,
+  ExternalLink
 } from 'lucide-react';
 import './Download.css';
 import './SecuritySection.css';
@@ -34,6 +37,7 @@ const Download = () => {
   const [securityScore, setSecurityScore] = useState(null);
   const [downloadCount, setDownloadCount] = useState(12450);
   const [isVisible, setIsVisible] = useState(false);
+  const [showDownloadInfo, setShowDownloadInfo] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
@@ -45,19 +49,37 @@ const Download = () => {
   }, []);
 
   const handleDownload = () => {
-    // Create a link to download the APK file
-    const link = document.createElement('a');
-    link.href = '/SoundWave.apk';
-    link.download = 'SoundWave.apk';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setDownloaded(true);
-
-    // Reset the download state after 3 seconds
-    setTimeout(() => {
-      setDownloaded(false);
-    }, 3000);
+    try {
+      // Create a link to download the APK file
+      const link = document.createElement('a');
+      link.href = '/SoundWave.apk';
+      link.download = 'SoundWave.apk';
+      link.target = '_blank'; // Open in new tab to avoid navigation issues
+      link.rel = 'noopener noreferrer';
+      
+      // Add some attributes for better browser compatibility
+      link.setAttribute('download', 'SoundWave.apk');
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setDownloaded(true);
+      setShowDownloadInfo(true);
+      
+      // Show a helpful message to users
+      console.log('Download started! If the download doesn\'t start automatically, your browser might be blocking it for security reasons.');
+      
+      // Reset the download state after 5 seconds (give more time for large file)
+      setTimeout(() => {
+        setDownloaded(false);
+        setShowDownloadInfo(false);
+      }, 8000);
+      
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Download failed. Please try again or contact support if the issue persists.');
+    }
   };
 
   const runSecurityTest = async () => {
@@ -355,6 +377,67 @@ const Download = () => {
           </div>
         </div>
       </section>
+
+      {/* Download Info Notification */}
+      {showDownloadInfo && (
+        <section className="download-notification">
+          <div className="container">
+            <div className="notification-card">
+              <div className="notification-header">
+                <div className="notification-icon">
+                  <CheckCircle size={24} className="check-icon" />
+                </div>
+                <div className="notification-content">
+                  <h3>Download Started Successfully!</h3>
+                  <p>Your SoundWave APK download should begin momentarily. If it doesn't start automatically, check the information below.</p>
+                </div>
+                <button 
+                  className="close-notification"
+                  onClick={() => setShowDownloadInfo(false)}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="notification-body">
+                <div className="download-tips">
+                  <div className="tip">
+                    <Info size={16} />
+                    <div className="tip-content">
+                      <strong>Download Blocked?</strong>
+                      <span>Your browser might be blocking the download for security. Check your downloads folder or browser notifications.</span>
+                    </div>
+                  </div>
+                  <div className="tip">
+                    <AlertCircle size={16} />
+                    <div className="tip-content">
+                      <strong>Security Warning Normal</strong>
+                      <span>Android may show a warning since this APK isn't from Play Store. This is completely normal and safe to ignore.</span>
+                    </div>
+                  </div>
+                  <div className="tip">
+                    <ExternalLink size={16} />
+                    <div className="tip-content">
+                      <strong>Manual Download</strong>
+                      <span>If automatic download fails, try right-clicking the download button and selecting "Save link as..."</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="next-steps">
+                  <h4>What's Next?</h4>
+                  <ol>
+                    <li>Locate the downloaded SoundWave.apk file (usually in Downloads folder)</li>
+                    <li>Go to Settings → Security → Enable "Install unknown apps" for your browser</li>
+                    <li>Tap the APK file to install SoundWave</li>
+                    <li>Enjoy unlimited YouTube audio downloads!</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Enhanced Features Section */}
       <section className="features-section-modern">
