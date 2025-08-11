@@ -35,6 +35,11 @@ import './Features.css';
 const Features = () => {
   const [activeTab, setActiveTab] = useState('app-features');
   const [visibleItems, setVisibleItems] = useState(new Set());
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanComplete, setScanComplete] = useState(false);
+  const [showScanResults, setShowScanResults] = useState(false);
+  const [currentScan, setCurrentScan] = useState('');
 
   useEffect(() => {
     const observer = new IntersectionObserver(
