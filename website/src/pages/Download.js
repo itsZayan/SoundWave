@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Download as DownloadIcon, 
   Smartphone, 
@@ -11,7 +11,16 @@ import {
   HardDrive,
   AlertCircle,
   PlayCircle,
-  Loader2
+  Loader2,
+  Music,
+  Headphones,
+  Cloud,
+  Lock,
+  Award,
+  Sparkles,
+  ArrowRight,
+  Gauge,
+  Users
 } from 'lucide-react';
 import './Download.css';
 import './SecuritySection.css';
@@ -23,6 +32,17 @@ const Download = () => {
   const [testCompleted, setTestCompleted] = useState(false);
   const [currentTestStep, setCurrentTestStep] = useState('');
   const [securityScore, setSecurityScore] = useState(null);
+  const [downloadCount, setDownloadCount] = useState(12450);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    setIsVisible(true);
+    // Animate download counter
+    const interval = setInterval(() => {
+      setDownloadCount(prev => prev + Math.floor(Math.random() * 3));
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleDownload = () => {
     // Create a link to download the APK file
@@ -107,17 +127,38 @@ const Download = () => {
     {
       icon: <Zap className="feature-icon" />,
       title: "Lightning Fast Downloads",
-      description: "Download YouTube audio in seconds with our optimized engine"
+      description: "Download YouTube audio in seconds with our optimized engine",
+      gradient: "from-blue-500 to-cyan-400"
     },
     {
       icon: <Shield className="feature-icon" />,
       title: "100% Safe & Secure",
-      description: "No malware, no ads, no tracking. Your privacy is protected"
+      description: "No malware, no ads, no tracking. Your privacy is protected",
+      gradient: "from-green-500 to-emerald-400"
     },
     {
-      icon: <CheckCircle className="feature-icon" />,
-      title: "High Quality Audio",
-      description: "Crystal clear audio up to 320kbps for the best listening experience"
+      icon: <Music className="feature-icon" />,
+      title: "Premium Audio Quality",
+      description: "Crystal clear audio up to 320kbps for the best listening experience",
+      gradient: "from-purple-500 to-pink-400"
+    },
+    {
+      icon: <Cloud className="feature-icon" />,
+      title: "No Storage Limits",
+      description: "Download unlimited tracks without worrying about storage space",
+      gradient: "from-indigo-500 to-blue-400"
+    },
+    {
+      icon: <Headphones className="feature-icon" />,
+      title: "Offline Listening",
+      description: "Enjoy your favorite music anywhere, anytime without internet",
+      gradient: "from-orange-500 to-yellow-400"
+    },
+    {
+      icon: <Sparkles className="feature-icon" />,
+      title: "AI-Enhanced Search",
+      description: "Smart search suggestions and metadata detection for perfect results",
+      gradient: "from-pink-500 to-rose-400"
     }
   ];
 
@@ -157,49 +198,86 @@ const Download = () => {
       <section className="download-hero">
         <div className="container">
           <div className="download-hero-content">
-            <div className="hero-text animate-fade-up">
+            <div className={`hero-text ${isVisible ? 'animate-fade-up' : ''}`}>
+              <div className="hero-badge">
+                <Award className="badge-icon" size={16} />
+                <span>Editor's Choice 2025</span>
+              </div>
               <h1 className="hero-title">
-                Download <span className="text-gradient">SoundWave</span>
+                Experience the Future of
+                <span className="text-gradient"> Audio Downloads</span>
               </h1>
               <p className="hero-subtitle">
-                Get the ultimate YouTube audio downloader for Android. Free, fast, and secure.
+                Transform YouTube into your personal music library with SoundWave's revolutionary download technology. Lightning-fast, crystal-clear, completely free.
               </p>
               
-              <div className="download-card">
-                <div className="app-icon">
-                  <Smartphone className="phone-icon" />
+              <div className="hero-stats">
+                <div className="stat">
+                  <div className="stat-number">{downloadCount.toLocaleString()}+</div>
+                  <div className="stat-label">Happy Users</div>
                 </div>
-                <div className="app-details">
-                  <h3>SoundWave for Android</h3>
-                  <div className="app-meta">
-                    <span className="version">Version {appInfo.version}</span>
-                    <span className="size">{appInfo.size}</span>
-                    <div className="rating">
-                      <Star className="star filled" size={14} />
-                      <Star className="star filled" size={14} />
-                      <Star className="star filled" size={14} />
-                      <Star className="star filled" size={14} />
-                      <Star className="star filled" size={14} />
-                      <span className="rating-text">4.9 (1,230 reviews)</span>
+                <div className="stat">
+                  <div className="stat-number">320kbps</div>
+                  <div className="stat-label">Max Quality</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-number">0s</div>
+                  <div className="stat-label">Wait Time</div>
+                </div>
+              </div>
+              
+              <div className="download-card-modern">
+                <div className="card-header">
+                  <div className="app-icon-modern">
+                    <div className="icon-inner">
+                      <Music className="app-icon-svg" />
+                    </div>
+                    <div className="icon-glow"></div>
+                  </div>
+                  <div className="app-info">
+                    <h3 className="app-title">SoundWave for Android</h3>
+                    <div className="app-meta-modern">
+                      <span className="version-badge">v{appInfo.version}</span>
+                      <span className="size-badge">{appInfo.size}</span>
+                      <div className="rating-modern">
+                        <div className="stars">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className="star filled" size={12} />
+                          ))}
+                        </div>
+                        <span className="rating-text">4.9 (12.5k)</span>
+                      </div>
                     </div>
                   </div>
+                </div>
+                
+                <div className="download-action">
                   <button 
-                    className={`download-btn ${downloaded ? 'downloaded' : ''}`}
+                    className={`download-btn-modern ${downloaded ? 'downloaded' : ''}`}
                     onClick={handleDownload}
                     disabled={downloaded}
                   >
-                    {downloaded ? (
-                      <>
-                        <CheckCircle size={20} />
-                        Downloaded!
-                      </>
-                    ) : (
-                      <>
-                        <DownloadIcon size={20} />
-                        Download APK
-                      </>
-                    )}
+                    <div className="btn-content">
+                      {downloaded ? (
+                        <>
+                          <CheckCircle className="btn-icon success" size={20} />
+                          <span>Successfully Downloaded!</span>
+                        </>
+                      ) : (
+                        <>
+                          <DownloadIcon className="btn-icon download" size={20} />
+                          <span>Download Free APK</span>
+                          <ArrowRight className="btn-arrow" size={16} />
+                        </>
+                      )}
+                    </div>
+                    <div className="btn-shimmer"></div>
                   </button>
+                  
+                  <div className="security-badge-small">
+                    <Shield size={14} />
+                    <span>Virus-free & Secure</span>
+                  </div>
                 </div>
               </div>
 
@@ -219,50 +297,56 @@ const Download = () => {
               </div>
             </div>
 
-            <div className="hero-visual animate-fade-left">
-              <div className="phone-mockup">
-                <div className="phone-frame">
-                  <div className="phone-screen">
-                    <div className="screen-content">
-                      <div className="mock-header">
-                        <div className="mock-logo">SoundWave</div>
-                        <div className="mock-search"></div>
-                      </div>
-                      <div className="mock-body">
-                        <div className="mock-item active">
-                          <div className="mock-thumb"></div>
-                          <div className="mock-info">
-                            <div className="mock-title"></div>
-                            <div className="mock-artist"></div>
-                          </div>
-                          <div className="mock-download">
-                            <DownloadIcon size={16} />
-                          </div>
-iv>
-iv>
-                        </div>
-                        <div className="mock-item">
-                          <div className="mock-thumb"></div>
-                          <div className="mock-info">
-                            <div className="mock-title"></div>
-                            <div className="mock-artist"></div>
-                          </div>
-                          <div className="mock-download">
-                            <DownloadIcon size={16} />
-                          </div>
-iv>
-                        </div>
-                        <div className="mock-item">
-                          <div className="mock-thumb"></div>
-                          <div className="mock-info">
-                            <div className="mock-title"></div>
-                            <div className="mock-artist"></div>
-                          </div>
-                          <div className="mock-download">
-                            <DownloadIcon size={16} />
-                          </div>
-                        </div>
-                      </div>
+            <div className={`hero-visual ${isVisible ? 'animate-fade-left' : ''}`}>
+              <div className="visual-container">
+                <div className="floating-elements">
+                  <div className="floating-card music-card">
+                    <Music className="card-icon" />
+                    <div className="card-content">
+                      <div className="card-title">High Quality Audio</div>
+                      <div className="card-desc">320kbps Crystal Clear</div>
+                    </div>
+                    <div className="card-glow"></div>
+                  </div>
+                  
+                  <div className="floating-card speed-card">
+                    <Gauge className="card-icon" />
+                    <div className="card-content">
+                      <div className="card-title">Lightning Fast</div>
+                      <div className="card-desc">3x Faster Downloads</div>
+                    </div>
+                    <div className="card-glow"></div>
+                  </div>
+                  
+                  <div className="floating-card users-card">
+                    <Users className="card-icon" />
+                    <div className="card-content">
+                      <div className="card-title">{downloadCount.toLocaleString()}+ Users</div>
+                      <div className="card-desc">Trusted Worldwide</div>
+                    </div>
+                    <div className="card-glow"></div>
+                  </div>
+                </div>
+                
+                <div className="central-graphic">
+                  <div className="graphic-core">
+                    <div className="core-icon">
+                      <Headphones size={80} />
+                    </div>
+                    <div className="pulse-ring ring-1"></div>
+                    <div className="pulse-ring ring-2"></div>
+                    <div className="pulse-ring ring-3"></div>
+                  </div>
+                  
+                  <div className="orbit-elements">
+                    <div className="orbit-item orbit-1">
+                      <DownloadIcon size={24} />
+                    </div>
+                    <div className="orbit-item orbit-2">
+                      <Shield size={24} />
+                    </div>
+                    <div className="orbit-item orbit-3">
+                      <Zap size={24} />
                     </div>
                   </div>
                 </div>
@@ -272,21 +356,40 @@ iv>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="download-features section">
+      {/* Enhanced Features Section */}
+      <section className="features-section-modern">
         <div className="container">
-          <div className="section-header text-center animate-fade-up">
-            <h2>Why Download SoundWave?</h2>
-            <p>Discover what makes SoundWave the best choice for YouTube audio downloads</p>
+          <div className="section-header-modern">
+            <div className="header-badge">
+              <Sparkles size={16} />
+              <span>Powerful Features</span>
+            </div>
+            <h2 className="section-title-modern">
+              Everything You Need for
+              <span className="title-gradient"> Perfect Audio Downloads</span>
+            </h2>
+            <p className="section-description-modern">
+              Experience the next generation of audio downloading with our cutting-edge features designed for perfection.
+            </p>
           </div>
-          <div className="features-grid">
+          
+          <div className="features-grid-modern">
             {features.map((feature, index) => (
-              <div key={index} className="feature-card animate-fade-up" style={{animationDelay: `${index * 0.1}s`}}>
-                <div className="feature-icon-wrapper">
+              <div 
+                key={index} 
+                className={`feature-card-modern ${isVisible ? 'animate-slide-up' : ''}`}
+                style={{animationDelay: `${index * 0.1}s`}}
+              >
+                <div className="card-background"></div>
+                <div className={`feature-icon-modern bg-gradient-to-r ${feature.gradient}`}>
                   {feature.icon}
+                  <div className="icon-shine"></div>
                 </div>
-                <h3 className="feature-title">{feature.title}</h3>
-                <p className="feature-description">{feature.description}</p>
+                <div className="feature-content-modern">
+                  <h3 className="feature-title-modern">{feature.title}</h3>
+                  <p className="feature-description-modern">{feature.description}</p>
+                </div>
+                <div className="card-hover-effect"></div>
               </div>
             ))}
           </div>
@@ -508,32 +611,76 @@ iv>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="download-cta section gradient-bg">
+      {/* Enhanced CTA Section */}
+      <section className="cta-section-modern">
+        <div className="cta-background">
+          <div className="cta-particles">
+            {[...Array(20)].map((_, i) => (
+              <div key={i} className={`particle particle-${i + 1}`}></div>
+            ))}
+          </div>
+        </div>
         <div className="container">
-          <div className="cta-content text-center animate-fade-up">
-            <h2>Ready to Start Downloading?</h2>
-            <p>Join thousands of users who love SoundWave for their music downloads</p>
-            <button 
-              className={`btn btn-primary btn-large ${downloaded ? 'downloaded' : ''}`}
-              onClick={handleDownload}
-              disabled={downloaded}
-            >
-              {downloaded ? (
-                <>
-                  <CheckCircle size={20} />
-                  Downloaded!
-                </>
-              ) : (
-                <>
-                  <DownloadIcon size={20} />
-                  Download SoundWave Now
-                </>
-              )}
-            </button>
-            <p className="cta-note">
-              Free download • No registration required • {appInfo.size}
+          <div className="cta-content-modern">
+            <div className="cta-icon-group">
+              <div className="cta-icon primary">
+                <Music size={32} />
+              </div>
+              <div className="cta-icon secondary">
+                <DownloadIcon size={24} />
+              </div>
+              <div className="cta-icon tertiary">
+                <Headphones size={28} />
+              </div>
+            </div>
+            
+            <h2 className="cta-title">
+              Ready to Transform Your
+              <span className="title-accent"> Music Experience?</span>
+            </h2>
+            
+            <p className="cta-description">
+              Join over {downloadCount.toLocaleString()} music lovers who've already discovered the power of SoundWave. Start your journey to unlimited audio freedom today.
             </p>
+            
+            <div className="cta-actions">
+              <button 
+                className={`cta-btn-primary ${downloaded ? 'downloaded' : ''}`}
+                onClick={handleDownload}
+                disabled={downloaded}
+              >
+                <div className="btn-background"></div>
+                <div className="btn-content">
+                  {downloaded ? (
+                    <>
+                      <CheckCircle className="btn-icon" size={20} />
+                      <span>Successfully Downloaded!</span>
+                    </>
+                  ) : (
+                    <>
+                      <DownloadIcon className="btn-icon" size={20} />
+                      <span>Download SoundWave Free</span>
+                      <ArrowRight className="btn-arrow" size={16} />
+                    </>
+                  )}
+                </div>
+              </button>
+              
+              <div className="cta-features">
+                <div className="cta-feature">
+                  <CheckCircle size={16} className="check-icon" />
+                  <span>100% Free Forever</span>
+                </div>
+                <div className="cta-feature">
+                  <CheckCircle size={16} className="check-icon" />
+                  <span>No Registration Required</span>
+                </div>
+                <div className="cta-feature">
+                  <CheckCircle size={16} className="check-icon" />
+                  <span>Instant Download ({appInfo.size})</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
