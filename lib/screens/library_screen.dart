@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:open_file/open_file.dart';
+import 'package:file_picker/file_picker.dart';
 import '../providers/theme_provider.dart';
+import '../providers/music_provider.dart';
 import '../services/download_service.dart';
 import '../services/audio_service.dart';
 import 'player_screen.dart';
@@ -15,21 +17,25 @@ class LibraryScreen extends StatefulWidget {
   State<LibraryScreen> createState() => _LibraryScreenState();
 }
 
-class _LibraryScreenState extends State<LibraryScreen> with RouteAware {
+class _LibraryScreenState extends State<LibraryScreen> with TickerProviderStateMixin {
+  late TabController _tabController;
   List<Map<String, dynamic>> _downloadedFiles = [];
+  List<Map<String, dynamic>> _importedFiles = [];
   bool _isLoading = true;
   final DownloadService _downloadService = DownloadService();
 
   @override
   void initState() {
     super.initState();
-    _loadDownloadedFiles();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadLibraryData();
     // Register for download completion notifications
     _downloadService.addLibraryRefreshCallback(_refreshLibrary);
   }
   
   @override
   void dispose() {
+    _tabController.dispose();
     // Unregister callback to prevent memory leaks
     _downloadService.removeLibraryRefreshCallback(_refreshLibrary);
     super.dispose();
@@ -37,7 +43,7 @@ class _LibraryScreenState extends State<LibraryScreen> with RouteAware {
   
   void _refreshLibrary() {
     if (mounted) {
-      _loadDownloadedFiles();
+      _loadLibraryData();
     }
   }
   
@@ -47,20 +53,35 @@ class _LibraryScreenState extends State<LibraryScreen> with RouteAware {
     // Refresh when the screen becomes visible
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _loadDownloadedFiles();
+        _loadLibraryData();
       }
     });
   }
 
-  Future<void> _loadDownloadedFiles() async {
-    final downloadService = DownloadService();
-    final files = await downloadService.getDownloadedFiles();
+  Future<void> _loadLibraryData() async {
+    setState(() => _isLoading = true);
     
-    if (mounted) {
-      setState(() {
-        _downloadedFiles = files;
-        _isLoading = false;
-      });
+    try {
+      // Load downloaded files
+      final downloadService = DownloadService();
+      final downloadedFiles = await downloadService.getDownloadedFiles();
+      
+      // Get imported songs from MusicProvider
+      final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+      final importedSongs = musicProvider.getImportedSongs();
+      
+      if (mounted) {
+        setState(() {
+          _downloadedFiles = downloadedFiles;
+          _importedFiles = importedSongs;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading library data: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -167,8 +188,253 @@ class _LibraryScreenState extends State<LibraryScreen> with RouteAware {
     if (confirmed == true) {
       final downloadService = DownloadService();
       await downloadService.deleteDownload(metadata['localPath']);
-      _loadDownloadedFiles(); // Refresh the list
+      _loadLibraryData(); // Refresh the list
     }
+  }
+
+  Future<void> _importSongsFromDevice() async {
+    try {
+      final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+      await musicProvider.importSongsFromDevice();
+      _loadLibraryData(); // Refresh the library
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Songs imported successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to import songs: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildDownloadedTab(bool isDark) {
+    if (_downloadedFiles.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.download,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No Downloaded Songs',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey[400],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Download music to listen offline',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _downloadedFiles.length,
+      itemBuilder: (context, index) {
+        final metadata = _downloadedFiles[index];
+        return _buildSongTile(metadata, isDark, true);
+      },
+    );
+  }
+
+  Widget _buildImportedTab(bool isDark) {
+    if (_importedFiles.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.phone_android,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No Imported Songs',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey[400],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Import songs from your device',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _importSongsFromDevice,
+              icon: const Icon(Icons.file_upload),
+              label: const Text('Import Songs'),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _importedFiles.length,
+      itemBuilder: (context, index) {
+        final song = _importedFiles[index];
+        return _buildSongTile(song, isDark, false);
+      },
+    );
+  }
+
+  Widget _buildSongTile(Map<String, dynamic> songData, bool isDark, bool isDownloaded) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(12),
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: CachedNetworkImage(
+            imageUrl: songData['thumbnail'] ?? '',
+            width: 60,
+            height: 60,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => Container(
+              width: 60,
+              height: 60,
+              color: Colors.grey[300],
+              child: const Icon(Icons.music_note),
+            ),
+            errorWidget: (context, url, error) => Container(
+              width: 60,
+              height: 60,
+              color: const Color(0xFF6366F1),
+              child: const Icon(
+                Icons.music_note,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+        title: Text(
+          songData['title'] ?? 'Unknown Title',
+          style: TextStyle(
+            fontWeight: FontWeight.w500,
+            color: isDark ? Colors.white : Colors.black,
+            fontSize: 16,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              songData['artist'] ?? songData['author'] ?? 'Unknown Artist',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (isDownloaded) ...[
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Icon(
+                    songData['fileType'] == 'audio' ? Icons.music_note : Icons.video_library,
+                    size: 14,
+                    color: songData['fileType'] == 'audio' ? Colors.blue[600] : Colors.red[600],
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    songData['fileType'] == 'audio' ? 'Audio' : 'Video',
+                    style: TextStyle(
+                      color: songData['fileType'] == 'audio' ? Colors.blue[600] : Colors.red[600],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(
+                Icons.play_arrow,
+                color: Color(0xFF6366F1),
+              ),
+              onPressed: () => isDownloaded 
+                ? _playDownloadedSong(songData)
+                : _playImportedSong(songData),
+              tooltip: 'Play',
+            ),
+            if (isDownloaded)
+              IconButton(
+                icon: const Icon(
+                  Icons.delete,
+                  color: Colors.red,
+                ),
+                onPressed: () => _deleteDownload(songData),
+                tooltip: 'Delete',
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _playImportedSong(Map<String, dynamic> song) async {
+    final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+    
+    // Mark as played to add to library
+    musicProvider.incrementPlayCount(song);
+    
+    // Set up playlist queue for auto-play
+    final audioService = Provider.of<GlobalAudioService>(context, listen: false);
+    audioService.setPlaylistQueue(_importedFiles, _importedFiles.indexOf(song));
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PlayerScreen(song: song),
+      ),
+    );
   }
 
   @override
@@ -191,8 +457,27 @@ class _LibraryScreenState extends State<LibraryScreen> with RouteAware {
             icon: const Icon(Icons.refresh),
             onPressed: () {
               setState(() => _isLoading = true);
-              _loadDownloadedFiles();
+              _loadLibraryData();
             },
+          ),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'import') {
+                _importSongsFromDevice();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'import',
+                child: Row(
+                  children: [
+                    Icon(Icons.file_upload),
+                    SizedBox(width: 8),
+                    Text('Import from Device'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -202,143 +487,38 @@ class _LibraryScreenState extends State<LibraryScreen> with RouteAware {
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
               ),
             )
-          : _downloadedFiles.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.library_music,
-                        size: 64,
-                        color: Colors.grey[400],
+          : Column(
+              children: [
+                Container(
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                  child: TabBar(
+                    controller: _tabController,
+                    indicatorColor: const Color(0xFF6366F1),
+                    labelColor: isDark ? Colors.white : Colors.black,
+                    unselectedLabelColor: Colors.grey,
+                    tabs: const [
+                      Tab(
+                        icon: Icon(Icons.download),
+                        text: 'Downloaded',
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No downloaded music',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey[400],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Download music from the search tab to listen offline',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[500],
-                        ),
-                        textAlign: TextAlign.center,
+                      Tab(
+                        icon: Icon(Icons.phone_android),
+                        text: 'Imported',
                       ),
                     ],
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _downloadedFiles.length,
-                  itemBuilder: (context, index) {
-                    final metadata = _downloadedFiles[index];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E1E1E) : Colors.grey[50],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(12),
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: CachedNetworkImage(
-                            imageUrl: metadata['thumbnail'] ?? '',
-                            width: 60,
-                            height: 60,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
-                              width: 60,
-                              height: 60,
-                              color: Colors.grey[300],
-                              child: const Icon(Icons.music_note),
-                            ),
-                            errorWidget: (context, url, error) => Container(
-                              width: 60,
-                              height: 60,
-                              color: const Color(0xFF6366F1),
-                              child: const Icon(
-                                Icons.music_note,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                        title: Text(
-                          metadata['title'] ?? 'Unknown Title',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? Colors.white : Colors.black,
-                            fontSize: 16,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            Text(
-                              metadata['author'] ?? 'Unknown Artist',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-            const SizedBox(height: 2),
-            Row(
-              children: [
-                Icon(
-                  metadata['fileType'] == 'audio' ? Icons.music_note : Icons.video_library,
-                  size: 14,
-                  color: metadata['fileType'] == 'audio' ? Colors.blue[600] : Colors.red[600],
                 ),
-                const SizedBox(width: 4),
-                Text(
-                  metadata['fileType'] == 'audio' ? 'Audio' : 'Video',
-                  style: TextStyle(
-                    color: metadata['fileType'] == 'audio' ? Colors.blue[600] : Colors.red[600],
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildDownloadedTab(isDark),
+                      _buildImportedTab(isDark),
+                    ],
                   ),
                 ),
               ],
             ),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.play_arrow,
-                                color: Color(0xFF6366F1),
-                              ),
-                              onPressed: () => _playDownloadedSong(metadata),
-                              tooltip: 'Play',
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.delete,
-                                color: Colors.red,
-                              ),
-                              onPressed: () => _deleteDownload(metadata),
-                              tooltip: 'Delete',
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
     );
   }
 }

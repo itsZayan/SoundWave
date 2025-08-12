@@ -9,6 +9,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'floating_download_manager.dart';
 
 class DownloadService {
   static final DownloadService _instance = DownloadService._internal();
@@ -149,6 +150,12 @@ class DownloadService {
     Function()? onComplete,
     Function(String)? onError,
   }) async {
+    // Always start floating download for all audio downloads
+    final videoId = _extractVideoId(url);
+    if (videoId != null) {
+      await _startFloatingDownload(videoId, url);
+    }
+    
     // Use youtube_explode_dart method directly
     return await _downloadAudioFallback(url, customName: customName, onProgress: onProgress, onComplete: onComplete, onError: onError);
   }
@@ -445,6 +452,8 @@ class DownloadService {
             if (total > 0) {
               final progress = received / total;
               onProgress?.call(progress, received, total);
+              // Update floating download progress
+              FloatingDownloadManager.updateProgress(videoId, progress * 100);
             }
           },
         );
@@ -460,6 +469,7 @@ class DownloadService {
         });
 
         onComplete?.call();
+        FloatingDownloadManager.completeDownload(videoId);
         return filePath;
       } catch (youtubeError) {
         print('YouTube Explode failed: $youtubeError');
@@ -855,6 +865,39 @@ class DownloadService {
       }
     } catch (e) {
       print('Error resuming downloads: $e');
+    }
+  }
+
+  Future<void> _startFloatingDownload(String videoId, String url) async {
+    try {
+      // Get video details for the floating download
+      final video = await _yt.videos.get(videoId);
+      final title = video.title;
+      final thumbnail = video.thumbnails.mediumResUrl;
+      
+      // Create floating download item
+      FloatingDownloadManager.startDownload(
+        id: videoId,
+        title: title,
+        thumbnail: thumbnail,
+        onCancel: () {
+          cancelDownload(videoId);
+        },
+        onRetry: () {
+          // Retry download logic could be implemented here
+        },
+      );
+    } catch (e) {
+      print('Error starting floating download: $e');
+      // Still create floating download with basic info
+      FloatingDownloadManager.startDownload(
+        id: videoId,
+        title: 'Downloading...',
+        thumbnail: '',
+        onCancel: () {
+          cancelDownload(videoId);
+        },
+      );
     }
   }
 

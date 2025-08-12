@@ -329,11 +329,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
               IconButton(
                 icon: const Icon(Icons.close),
                 onPressed: () {
-                  // Stop audio and close player
+                  // Pause audio/video but don't stop completely to allow background play
                   if (_isVideoFile && _videoPlayerController != null) {
                     _videoPlayerController!.pause();
                   } else {
-                    _audioService?.stop();
+                    _audioService?.pause();
                   }
                   Navigator.of(context).pop();
                 },
@@ -368,6 +368,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 const SizedBox(height: 40),
                 // Control Buttons
                 _buildControlButtons(isDark),
+                const SizedBox(height: 30),
+                // Shuffle and Repeat Controls
+                _buildShuffleRepeatControls(isDark),
                 const Spacer(),
               ],
             ),
@@ -461,6 +464,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
+        // Previous track
+        Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF2A2A2A) : Colors.grey[200],
+            borderRadius: BorderRadius.circular(50),
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.skip_previous),
+            onPressed: _playPrevious,
+            iconSize: 30,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+        ),
+        // Backward 10 seconds
         Container(
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF2A2A2A) : Colors.grey[200],
@@ -473,6 +490,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             color: isDark ? Colors.white : Colors.black,
           ),
         ),
+        // Play/Pause
         Container(
           decoration: const BoxDecoration(
             color: Color(0xFF6366F1),
@@ -485,6 +503,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             color: Colors.white,
           ),
         ),
+        // Forward 10 seconds
         Container(
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF2A2A2A) : Colors.grey[200],
@@ -493,6 +512,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
           child: IconButton(
             icon: const Icon(Icons.forward_10),
             onPressed: _seekForward,
+            iconSize: 30,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+        ),
+        // Next track
+        Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF2A2A2A) : Colors.grey[200],
+            borderRadius: BorderRadius.circular(50),
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.skip_next),
+            onPressed: _playNext,
             iconSize: 30,
             color: isDark ? Colors.white : Colors.black,
           ),
@@ -675,5 +707,103 @@ class _PlayerScreenState extends State<PlayerScreen> {
     } else {
       _audioService?.seek(newPosition > _duration ? _duration : newPosition);
     }
+  }
+
+  void _playPrevious() {
+    if (_audioService != null && !_isVideoFile) {
+      _audioService!.playPrevious();
+    }
+  }
+
+  void _playNext() {
+    if (_audioService != null && !_isVideoFile) {
+      _audioService!.playNext();
+    }
+  }
+
+  Widget _buildShuffleRepeatControls(bool isDark) {
+    if (_isVideoFile) {
+      return const SizedBox.shrink(); // Don't show for video files
+    }
+    
+    return Consumer<GlobalAudioService>(
+      builder: (context, audioService, child) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            // Shuffle button
+            Container(
+              decoration: BoxDecoration(
+                color: audioService.isShuffleEnabled 
+                    ? const Color(0xFF6366F1).withOpacity(0.2)
+                    : (isDark ? const Color(0xFF2A2A2A) : Colors.grey[200]),
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.shuffle),
+                onPressed: () {
+                  audioService.toggleShuffle();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        audioService.isShuffleEnabled 
+                            ? 'Shuffle enabled' 
+                            : 'Shuffle disabled'
+                      ),
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                },
+                iconSize: 24,
+                color: audioService.isShuffleEnabled 
+                    ? const Color(0xFF6366F1)
+                    : (isDark ? Colors.white : Colors.black),
+              ),
+            ),
+            // Repeat button
+            Container(
+              decoration: BoxDecoration(
+                color: audioService.repeatMode != RepeatMode.off 
+                    ? const Color(0xFF6366F1).withOpacity(0.2)
+                    : (isDark ? const Color(0xFF2A2A2A) : Colors.grey[200]),
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: IconButton(
+                icon: Icon(
+                  audioService.repeatMode == RepeatMode.one 
+                      ? Icons.repeat_one
+                      : Icons.repeat,
+                ),
+                onPressed: () {
+                  audioService.toggleRepeat();
+                  String message = '';
+                  switch (audioService.repeatMode) {
+                    case RepeatMode.off:
+                      message = 'Repeat disabled';
+                      break;
+                    case RepeatMode.all:
+                      message = 'Repeat all enabled';
+                      break;
+                    case RepeatMode.one:
+                      message = 'Repeat one enabled';
+                      break;
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(message),
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                },
+                iconSize: 24,
+                color: audioService.repeatMode != RepeatMode.off 
+                    ? const Color(0xFF6366F1)
+                    : (isDark ? Colors.white : Colors.black),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

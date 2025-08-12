@@ -4,7 +4,11 @@ import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/music_provider.dart';
 import '../widgets/bottom_music_player.dart';
+import '../widgets/modern_ui_widgets.dart';
 import '../services/shortcut_service.dart';
+import '../services/version_check_service.dart';
+import '../widgets/update_dialog.dart';
+import '../screens/force_update_screen.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
 import 'search_screen.dart';
@@ -74,6 +78,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       curve: Curves.easeInOut,
     );
     _initializeShortcuts();
+    _checkForUpdates();
   }
   
   @override
@@ -88,6 +93,50 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     _shortcutService.onShortcutPressed = (playlistId) {
       _handlePlaylistShortcut(playlistId);
     };
+  }
+  
+  void _checkForUpdates() async {
+    try {
+      // Wait a bit for the app to fully initialize
+      await Future.delayed(const Duration(seconds: 3));
+      
+      if (!mounted) return;
+      
+      // Check if we should perform version check
+      final shouldCheck = await VersionCheckService.shouldCheckVersion();
+      if (!shouldCheck) return;
+      
+      // Perform the version check
+      final updateStatus = await VersionCheckService.checkForUpdate();
+      
+      if (!mounted) return;
+      
+      // If update is available and not skipped
+      if (updateStatus.updateAvailable && updateStatus.versionInfo != null) {
+        final versionInfo = updateStatus.versionInfo!;
+        
+        // Check if user already skipped this version (only for non-force updates)
+        if (!updateStatus.forceUpdate) {
+          final isSkipped = await VersionCheckService.isVersionSkipped(versionInfo.latestVersion);
+          if (isSkipped) return;
+        }
+        
+        // Show update dialog
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: !updateStatus.forceUpdate,
+            builder: (context) => UpdateDialog(
+              versionInfo: versionInfo,
+              forceUpdate: updateStatus.forceUpdate,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Version check failed: $e');
+      // Silently fail - don't bother the user with version check errors
+    }
   }
   
   void _handlePlaylistShortcut(String playlistId) {
@@ -254,57 +303,60 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     final item = _navigationItems[index];
     final isSelected = _currentIndex == index;
     
-    return GestureDetector(
-      onTap: () {
-        _navigateToTab(index);
-        HapticFeedback.lightImpact();
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingMedium,
-          vertical: AppTheme.spacingSmall,
-        ),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
-          color: isSelected 
-            ? (item['color'] as Color).withOpacity(0.1)
-            : Colors.transparent,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              padding: const EdgeInsets.all(AppTheme.spacingSmall),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
-                color: isSelected 
-                  ? item['color'] as Color
-                  : Colors.transparent,
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          _navigateToTab(index);
+          HapticFeedback.lightImpact();
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 6,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+            color: isSelected 
+              ? (item['color'] as Color).withOpacity(0.1)
+              : Colors.transparent,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+                  color: isSelected 
+                    ? item['color'] as Color
+                    : Colors.transparent,
+                ),
+                child: Icon(
+                  isSelected ? item['activeIcon'] : item['icon'],
+                  color: isSelected 
+                    ? Colors.white
+                    : Theme.of(context).iconTheme.color?.withOpacity(0.6),
+                  size: 20,
+                ),
               ),
-              child: Icon(
-                isSelected ? item['activeIcon'] : item['icon'],
-                color: isSelected 
-                  ? Colors.white
-                  : Theme.of(context).iconTheme.color?.withOpacity(0.6),
-                size: 24,
+              const SizedBox(height: 2),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 300),
+                style: Theme.of(context).textTheme.labelSmall!.copyWith(
+                  color: isSelected 
+                    ? item['color'] as Color
+                    : Theme.of(context).textTheme.labelSmall?.color?.withOpacity(0.6),
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 11,
+                ),
+                child: Text(item['label']),
               ),
-            ),
-            const SizedBox(height: AppTheme.spacingExtraSmall),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 300),
-              style: Theme.of(context).textTheme.labelSmall!.copyWith(
-                color: isSelected 
-                  ? item['color'] as Color
-                  : Theme.of(context).textTheme.labelSmall?.color?.withOpacity(0.6),
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              ),
-              child: Text(item['label']),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

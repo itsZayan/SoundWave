@@ -33,8 +33,11 @@ class FloatingDownloadManager extends ChangeNotifier {
 
   final List<DownloadItem> _downloads = [];
   final Map<String, Offset> _positions = {};
+  bool _isVisible = true;
 
   List<DownloadItem> get downloads => List.unmodifiable(_downloads);
+  bool get hasActiveDownloads => _downloads.any((d) => !d.isCompleted && !d.isError);
+  bool get isVisible => _isVisible && _downloads.isNotEmpty;
 
   void addDownload(DownloadItem download) {
     _downloads.add(download);
@@ -109,6 +112,51 @@ class FloatingDownloadManager extends ChangeNotifier {
   void clearAll() {
     _downloads.clear();
     _positions.clear();
+    notifyListeners();
+  }
+
+  // Static convenience methods for easy access
+  static void startDownload({
+    required String id,
+    required String title,
+    required String thumbnail,
+    VoidCallback? onCancel,
+    VoidCallback? onRetry,
+  }) {
+    final instance = FloatingDownloadManager();
+    instance.addDownload(DownloadItem(
+      id: id,
+      title: title,
+      thumbnail: thumbnail,
+      onCancel: onCancel,
+      onRetry: onRetry,
+    ));
+  }
+
+  static void updateProgress(String id, double progress) {
+    FloatingDownloadManager().updateDownload(id, progress: progress);
+  }
+
+  static void completeDownload(String id) {
+    FloatingDownloadManager().updateDownload(id, isCompleted: true, progress: 1.0);
+  }
+
+  static void errorDownload(String id, String error) {
+    FloatingDownloadManager().updateDownload(id, isError: true, errorMessage: error);
+  }
+
+  void toggleVisibility() {
+    _isVisible = !_isVisible;
+    notifyListeners();
+  }
+
+  void show() {
+    _isVisible = true;
+    notifyListeners();
+  }
+
+  void hide() {
+    _isVisible = false;
     notifyListeners();
   }
 }

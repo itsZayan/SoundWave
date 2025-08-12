@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/music_provider.dart';
+import '../providers/theme_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/modern_ui_widgets.dart';
+import '../services/download_service.dart';
 import 'add_music_screen.dart';
 import 'player_screen.dart';
 
@@ -65,14 +68,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Consumer<MusicProvider>(
       builder: (context, musicProvider, child) {
-        final recentMusic = musicProvider.library
-            .where((song) => song['addedAt'] != null)
-            .toList();
-            
+        // Get all downloaded and imported songs
+        final allSongs = <Map<String, dynamic>>[];
+        allSongs.addAll(musicProvider.getDownloadedSongs());
+        allSongs.addAll(musicProvider.getImportedSongs());
+        
+        // Also get songs from library that have been played at least once
+        final librarySongs = musicProvider.library;
+        allSongs.addAll(librarySongs);
+        
+        // Remove duplicates based on ID
+        final uniqueSongs = <String, Map<String, dynamic>>{};
+        for (final song in allSongs) {
+          final id = song['id'] ?? song['url'] ?? song['title'];
+          if (id != null && !uniqueSongs.containsKey(id)) {
+            uniqueSongs[id] = song;
+          }
+        }
+        
+        final recentMusic = uniqueSongs.values.toList();
+        
+        // Sort by recently added or last played
         recentMusic.sort((a, b) {
           try {
-            return DateTime.parse(b['addedAt'])
-                .compareTo(DateTime.parse(a['addedAt']));
+            final aTime = DateTime.tryParse(a['addedAt'] ?? a['lastPlayedAt'] ?? '') ?? DateTime(1970);
+            final bTime = DateTime.tryParse(b['addedAt'] ?? b['lastPlayedAt'] ?? '') ?? DateTime(1970);
+            return bTime.compareTo(aTime);
           } catch (e) {
             return 0;
           }
@@ -182,7 +203,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           label: 'Shuffle All',
           color: AppTheme.successColor,
           onTap: () {
-            // Add shuffle all functionality
+            final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+            musicProvider.shuffleAll();
+            HapticFeedback.lightImpact();
           },
         ),
       ],
@@ -198,31 +221,53 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       required VoidCallback onTap,
     }
   ) {
-    return GestureDetector(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return ModernCard(
       onTap: () {
         onTap();
         HapticFeedback.lightImpact();
       },
+      padding: const EdgeInsets.all(AppTheme.spacingMedium),
+      margin: const EdgeInsets.symmetric(horizontal: AppTheme.spacingExtraSmall),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(AppTheme.spacingMedium),
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  color.withOpacity(0.8),
+                  color,
+                ],
+              ),
               borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.3),
+                  offset: const Offset(0, 4),
+                  blurRadius: 12,
+                ),
+              ],
             ),
             child: Icon(
               icon,
-              color: color,
-              size: 32,
+              color: Colors.white,
+              size: 28,
             ),
           ),
           const SizedBox(height: AppTheme.spacingSmall),
           Text(
             label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -258,87 +303,162 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
   
   Widget _buildModernMusicItem(BuildContext context, Map<String, dynamic> song, int index) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingLarge,
-        vertical: AppTheme.spacingSmall,
-      ),
-      child: InkWell(
-        onTap: () => _navigateToScreen(context, PlayerScreen(song: song)),
-        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
-        child: Container(
-          padding: const EdgeInsets.all(AppTheme.spacingSmall),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
-            boxShadow: [
-              BoxShadow(
-                color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 400 + (index * 100)),
+      tween: Tween(begin: 0.0, end: 1.0),
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 50 * (1 - value)),
+          child: Opacity(
+            opacity: value,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.spacingLarge,
+                vertical: AppTheme.spacingSmall,
               ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Hero(
-                tag: 'thumbnail_${song['id']}',
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
-                  child: CachedNetworkImage(
-                    imageUrl: song['thumbnail'] ?? '',
-                    width: 60,
-                    height: 60,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey.withOpacity(0.1),
-                      child: const Center(
-                        child: Icon(Icons.music_note_rounded),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey.withOpacity(0.1),
-                      child: const Center(
-                        child: Icon(Icons.error_outline_rounded),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppTheme.spacingMedium),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              child: ModernCard(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  _navigateToScreen(context, PlayerScreen(song: song));
+                },
+                padding: const EdgeInsets.all(AppTheme.spacingMedium),
+                showBorder: true,
+                child: Row(
                   children: [
-                    Text(
-                      song['title'] ?? 'Unknown Title',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: AppTheme.spacingExtraSmall),
-                    Text(
-                      song['artist'] ?? 'Unknown Artist',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    // Album art with modern styling
+                    Hero(
+                      tag: 'thumbnail_${song['id']}',
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                          boxShadow: AppTheme.modernShadow,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                          child: CachedNetworkImage(
+                            imageUrl: song['thumbnail'] ?? '',
+                            width: 64,
+                            height: 64,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => ShimmerLoading(
+                              isLoading: true,
+                              child: Container(
+                                width: 64,
+                                height: 64,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                                ),
+                                child: const Icon(Icons.music_note_rounded, color: Colors.grey),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                              ),
+                              child: Icon(
+                                Icons.music_note_rounded,
+                                color: AppTheme.primaryColor,
+                                size: 32,
+                              ),
+                            ),
                           ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppTheme.spacingMedium),
+                    // Song info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            song['title'] ?? 'Unknown Title',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: AppTheme.spacingExtraSmall),
+                          Text(
+                            song['artist'] ?? 'Unknown Artist',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                            ),
+                          ),
+                          if (song['duration'] != null) ...[
+                            const SizedBox(height: AppTheme.spacingExtraSmall),
+                            Text(
+                              _formatDuration(song['duration']),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    // Modern play button
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradientLinear,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryColor.withOpacity(0.3),
+                            offset: const Offset(0, 4),
+                            blurRadius: 12,
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(24),
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            _navigateToScreen(context, PlayerScreen(song: song));
+                          },
+                          child: const Icon(
+                            Icons.play_arrow_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.play_arrow_rounded),
-                color: AppTheme.primaryColor,
-                iconSize: 32,
-                onPressed: () => _navigateToScreen(context, PlayerScreen(song: song)),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
+  }
+  
+  String _formatDuration(dynamic duration) {
+    if (duration == null) return '';
+    
+    int seconds = 0;
+    if (duration is String) {
+      seconds = int.tryParse(duration) ?? 0;
+    } else if (duration is int) {
+      seconds = duration;
+    }
+    
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
+    return '${minutes}:${remainingSeconds.toString().padLeft(2, '0')}';
   }
   
   Widget _buildEmptyState(BuildContext context) {

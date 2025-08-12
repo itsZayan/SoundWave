@@ -13,7 +13,10 @@ import 'services/audio_player_task.dart';
 import 'package:audio_service/audio_service.dart';
 import 'screens/add_music_screen.dart';
 import 'screens/splash_screen.dart';
+import 'screens/force_update_screen.dart';
+import 'services/version_check_service.dart';
 import 'widgets/floating_download_widget.dart';
+import 'widgets/app_wrapper.dart';
 import 'services/audio_handler.dart';
 
 void main() async {
@@ -162,7 +165,7 @@ class _SoundWaveAppState extends State<SoundWaveApp> {
               title: 'SoundWave',
               debugShowCheckedModeBanner: false,
               theme: themeProvider.currentTheme,
-              home: const MainScreen(),
+              home: const AppWrapper(),
               builder: (context, child) {
                 return Stack(
                   children: [
