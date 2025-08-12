@@ -169,11 +169,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
         ),
         const SizedBox(height: AppTheme.spacingSmall),
-        Text(
-          'Let the music play!',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+        Row(
+          children: [
+            Text(
+              'Let the music play!',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradientLinear,
+                borderRadius: BorderRadius.circular(12),
               ),
+              child: Text(
+                'v1.0.1',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 10,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

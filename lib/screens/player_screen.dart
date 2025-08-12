@@ -294,6 +294,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
             backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
             foregroundColor: isDark ? Colors.white : Colors.black,
             elevation: 0,
+            // Custom leading button for minimize behavior
+            leading: IconButton(
+              icon: const Icon(Icons.keyboard_arrow_down_rounded),
+              onPressed: () {
+                // Minimize - just go back, keep audio playing
+                Navigator.of(context).pop();
+              },
+              tooltip: 'Minimize',
+            ),
             actions: [
               // Auto-play toggle button
               Consumer<GlobalAudioService>(
@@ -327,17 +336,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   tooltip: 'Download',
                 ),
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: const Icon(Icons.close_rounded),
                 onPressed: () {
-                  // Pause audio/video but don't stop completely to allow background play
+                  // Close - stop audio/video and close player
                   if (_isVideoFile && _videoPlayerController != null) {
                     _videoPlayerController!.pause();
                   } else {
-                    _audioService?.pause();
+                    _audioService?.stop(); // Stop completely when closing
                   }
                   Navigator.of(context).pop();
                 },
-                tooltip: 'Close',
+                tooltip: 'Stop and Close',
               ),
             ],
           ),
