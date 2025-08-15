@@ -83,18 +83,15 @@ class VersionCheckService {
         }
       } catch (e) {
         print('⚠️ Version Check: GitHub fetch failed: $e');
-        print('🔄 Version Check: Using fallback version info');
+        print('🔄 Version Check: GitHub unavailable, assuming no update needed');
         
-        // Fallback to a default version info if GitHub is not available
-        versionInfo = VersionInfo(
-          latestVersion: '1.0.1',
-          minimumVersion: '1.0.0', 
-          downloadUrl: 'https://github.com/itsZayan/SoundWave/releases/latest',
-          releaseNotes: '🎵 SoundWave Update!\n\n✨ What\'s New:\n• Bug fixes and improvements\n• Enhanced audio quality\n• Better performance',
+        // If we can't reach GitHub, assume no update is available
+        // This prevents false update notifications when offline
+        return UpdateStatus(
+          updateAvailable: false,
           forceUpdate: false,
-          releaseDate: '2025-01-15',
+          versionInfo: null,
         );
-        print('📱 Version Check: Using fallback version ${versionInfo.latestVersion}');
       }
       
       print('🔍 Version Check: Latest version = ${versionInfo.latestVersion}');
