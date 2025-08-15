@@ -97,30 +97,37 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   
   void _checkForUpdates() async {
     try {
+      print('🏠 MainScreen: Starting update check...');
       // Wait a bit for the app to fully initialize
       await Future.delayed(const Duration(seconds: 3));
       
+      print('🏠 MainScreen: Initialization delay complete');
       if (!mounted) return;
       
       // Check if we should perform version check
       final shouldCheck = await VersionCheckService.shouldCheckVersion();
+      print('🏠 MainScreen: Should check = $shouldCheck');
       if (!shouldCheck) return;
       
       // Perform the version check
       final updateStatus = await VersionCheckService.checkForUpdate();
+      print('🏠 MainScreen: Update available = ${updateStatus.updateAvailable}');
       
       if (!mounted) return;
       
       // If update is available and not skipped
       if (updateStatus.updateAvailable && updateStatus.versionInfo != null) {
         final versionInfo = updateStatus.versionInfo!;
+        print('🏠 MainScreen: Update version = ${versionInfo.latestVersion}');
         
         // Check if user already skipped this version (only for non-force updates)
         if (!updateStatus.forceUpdate) {
           final isSkipped = await VersionCheckService.isVersionSkipped(versionInfo.latestVersion);
+          print('🏠 MainScreen: Version skipped = $isSkipped');
           if (isSkipped) return;
         }
         
+        print('🏠 MainScreen: Showing update dialog...');
         // Show update dialog
         if (mounted) {
           showDialog(
@@ -132,6 +139,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
             ),
           );
         }
+      } else {
+        print('🏠 MainScreen: No update available');
       }
     } catch (e) {
       print('Version check failed: $e');

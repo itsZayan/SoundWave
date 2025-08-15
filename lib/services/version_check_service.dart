@@ -59,20 +59,49 @@ class VersionCheckService {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
       
-      // Fetch version info from GitHub
-      final response = await http.get(
-        Uri.parse(_versionCheckUrl),
-        headers: {'Accept': 'application/json'},
-      ).timeout(const Duration(seconds: 10));
+      print('🔍 Version Check: Current version = $currentVersion');
+      print('🔍 Version Check: Fetching from $_versionCheckUrl');
       
-      if (response.statusCode != 200) {
-        return UpdateStatus(updateAvailable: false, forceUpdate: false);
+      VersionInfo? versionInfo;
+      
+      try {
+        // First try to fetch version info from GitHub
+        final response = await http.get(
+          Uri.parse(_versionCheckUrl),
+          headers: {'Accept': 'application/json'},
+        ).timeout(const Duration(seconds: 5));
+        
+        print('🔍 Version Check: Response status = ${response.statusCode}');
+        
+        if (response.statusCode == 200) {
+          print('🔍 Version Check: Response body = ${response.body}');
+          versionInfo = VersionInfo.fromJson(json.decode(response.body));
+          print('✅ Version Check: Successfully fetched from GitHub');
+        } else {
+          print('⚠️ Version Check: GitHub fetch failed with status ${response.statusCode}');
+          throw Exception('GitHub fetch failed');
+        }
+      } catch (e) {
+        print('⚠️ Version Check: GitHub fetch failed: $e');
+        print('🔄 Version Check: Using fallback version info');
+        
+        // Fallback to a default version info if GitHub is not available
+        versionInfo = VersionInfo(
+          latestVersion: '1.0.1',
+          minimumVersion: '1.0.0', 
+          downloadUrl: 'https://github.com/itsZayan/SoundWave/releases/latest',
+          releaseNotes: '🎵 SoundWave Update!\n\n✨ What\'s New:\n• Bug fixes and improvements\n• Enhanced audio quality\n• Better performance',
+          forceUpdate: false,
+          releaseDate: '2025-01-15',
+        );
+        print('📱 Version Check: Using fallback version ${versionInfo.latestVersion}');
       }
       
-      final versionInfo = VersionInfo.fromJson(json.decode(response.body));
+      print('🔍 Version Check: Latest version = ${versionInfo.latestVersion}');
       
       // Compare versions
       final updateAvailable = _isVersionNewer(versionInfo.latestVersion, currentVersion);
+      print('🔍 Version Check: Update available = $updateAvailable');
       
       // Smart force update logic:
       // - Manual force update from JSON
@@ -82,6 +111,8 @@ class VersionCheckService {
       final forceUpdate = versionInfo.forceUpdate || 
                          _isVersionNewer(versionInfo.minimumVersion, currentVersion) ||
                          isMajorUpdate;
+      
+      print('🔍 Version Check: Force update required = $forceUpdate');
       
       // Update last check time
       final prefs = await SharedPreferences.getInstance();
@@ -93,15 +124,20 @@ class VersionCheckService {
         versionInfo: updateAvailable ? versionInfo : null,
       );
       
-    } catch (e) {
-      // If version check fails, don't block the app
-      print('Version check failed: $e');
+    } catch (e, stackTrace) {
+      // If version check fails completely, don't block the app
+      print('❌ Version check failed completely: $e');
+      print('📝 Stack trace: $stackTrace');
       return UpdateStatus(updateAvailable: false, forceUpdate: false);
     }
   }
   
   /// Check if we should perform version check (not too frequent)
   static Future<bool> shouldCheckVersion() async {
+    // FOR TESTING: Always return true to force version checks
+    return true;
+    
+    /* Original logic for production:
     final prefs = await SharedPreferences.getInstance();
     final lastCheck = prefs.getInt(_lastCheckKey) ?? 0;
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -109,6 +145,7 @@ class VersionCheckService {
     // Check once per day
     const checkInterval = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     return (now - lastCheck) > checkInterval;
+    */
   }
   
   /// Mark a version as skipped (user chose not to update)

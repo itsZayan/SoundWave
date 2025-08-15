@@ -13,56 +13,53 @@ class AppWrapper extends StatefulWidget {
 }
 
 class _AppWrapperState extends State<AppWrapper> {
-  bool _isCheckingVersion = true;
   bool _requiresForceUpdate = false;
   VersionInfo? _updateVersionInfo;
 
   @override
   void initState() {
     super.initState();
+    // Run version check in background without blocking the UI
     _checkForForceUpdate();
   }
 
   Future<void> _checkForForceUpdate() async {
     try {
-      // Wait a bit for the app to fully initialize
-      await Future.delayed(const Duration(seconds: 2));
+      print('🚀 AppWrapper: Starting background force update check...');
       
-      if (!mounted) return;
-      
-      // Always check on app start for force updates
+      // Run version check in background
       final updateStatus = await VersionCheckService.checkForUpdate();
+      print('🚀 AppWrapper: Force update available = ${updateStatus.updateAvailable}, force = ${updateStatus.forceUpdate}');
       
       if (!mounted) return;
       
-      setState(() {
-        _isCheckingVersion = false;
-        _requiresForceUpdate = updateStatus.forceUpdate && updateStatus.updateAvailable;
-        _updateVersionInfo = updateStatus.versionInfo;
-      });
+      final requiresForce = updateStatus.forceUpdate && updateStatus.updateAvailable;
+      print('🚀 AppWrapper: Requires force update = $requiresForce');
+      
+      if (requiresForce) {
+        setState(() {
+          _requiresForceUpdate = requiresForce;
+          _updateVersionInfo = updateStatus.versionInfo;
+        });
+        print('🚀 AppWrapper: Will show force update screen');
+      } else {
+        print('🚀 AppWrapper: No force update required, continuing normally');
+      }
       
     } catch (e) {
-      print('Force update check failed: $e');
-      // On error, allow app to continue
-      if (mounted) {
-        setState(() {
-          _isCheckingVersion = false;
-          _requiresForceUpdate = false;
-        });
-      }
+      print('Background force update check failed: $e');
+      // On error, allow app to continue normally
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isCheckingVersion) {
-      return _buildModernLoadingScreen();
-    }
-
+    // Show force update screen if required
     if (_requiresForceUpdate && _updateVersionInfo != null) {
       return ForceUpdateScreen(versionInfo: _updateVersionInfo!);
     }
 
+    // Otherwise show main screen directly (no loading screen)
     return const MainScreen();
   }
   
