@@ -1,8 +1,0 @@
-{
-  "latest_version": "1.0.4",
-  "minimum_version": "1.0.0",
-  "download_url": "https://github.com/itsZayan/SoundWave/releases/latest/download/app-release.apk",
-  "release_notes": "🎵 SoundWave Update v1.0.4!\n\n✨ What's New:\n• 🔄 WORKING Update notification system!\n• 🚀 Fixed all loading screen issues\n• ⚙️ Improved version checking system\n• 📱 Better app performance\n• 🎨 Enhanced UI/UX experience\n• 🔍 Background version checking\n• 🛜️ Bug fixes and stability improvements",
-  "force_update": false,
-  "release_date": "2025-01-15"
-}

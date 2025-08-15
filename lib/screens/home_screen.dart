@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../providers/music_provider.dart';
 import '../providers/theme_provider.dart';
 import '../theme/app_theme.dart';
@@ -178,20 +179,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
             ),
             const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradientLinear,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                'v1.0.1',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 10,
-                ),
-              ),
+            FutureBuilder<PackageInfo>(
+              future: PackageInfo.fromPlatform(),
+              builder: (context, snapshot) {
+                final version = snapshot.data?.version ?? '1.0.1';
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradientLinear,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'v$version',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
