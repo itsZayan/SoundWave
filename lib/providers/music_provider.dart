@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../services/data_persistence_service.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -60,23 +61,82 @@ class MusicProvider extends ChangeNotifier {
   Future<void> _loadInitialData() async {
     _setLoading(true);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final libraryString = prefs.getString('library');
-      final playlistsString = prefs.getString('playlists');
+      // First try to restore from external backup
+      final backupData = await DataPersistenceService.restoreBackup();
       
-      if (libraryString != null) {
-        final List<dynamic> libraryJson = jsonDecode(libraryString);
-        _library.addAll(List<Map<String, dynamic>>.from(libraryJson));
-      }
-      
-      if (playlistsString != null) {
-        final List<dynamic> playlistsJson = jsonDecode(playlistsString);
-        _playlists.addAll(List<Map<String, dynamic>>.from(playlistsJson));
+      if (backupData != null) {
+        // Restore from backup
+        debugPrint('🔄 Restoring data from external backup...');
+        
+        if (backupData['library'] != null) {
+          final libraryData = backupData['library'] as Map<String, dynamic>;
+          _library.addAll(List<Map<String, dynamic>>.from(libraryData['songs'] ?? []));
+        }
+        
+        if (backupData['playlists'] != null) {
+          final playlistsData = backupData['playlists'] as Map<String, dynamic>;
+          _playlists.addAll(List<Map<String, dynamic>>.from(playlistsData['playlists'] ?? []));
+        }
+        
+        debugPrint('✅ Data restored from backup: ${_library.length} songs, ${_playlists.length} playlists');
+      } else {
+        // Fallback to internal storage
+        debugPrint('🔄 Loading data from internal storage...');
+        final prefs = await SharedPreferences.getInstance();
+        final libraryString = prefs.getString('library');
+        final playlistsString = prefs.getString('playlists');
+        
+        if (libraryString != null) {
+          final List<dynamic> libraryJson = jsonDecode(libraryString);
+          _library.addAll(List<Map<String, dynamic>>.from(libraryJson));
+        }
+        
+        if (playlistsString != null) {
+          final List<dynamic> playlistsJson = jsonDecode(playlistsString);
+          _playlists.addAll(List<Map<String, dynamic>>.from(playlistsJson));
+        }
+        
+        // Create backup for future use
+        await _createBackup();
       }
     } catch (error) {
       debugPrint('Error loading initial data: $error');
     } finally {
       _setLoading(false);
+    }
+  }
+
+  /// Create backup of current data to external storage
+  Future<void> _createBackup() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      final success = await DataPersistenceService.createBackup(
+        library: {
+          'songs': _library,
+          'lastUpdated': DateTime.now().toIso8601String(),
+        },
+        playlists: {
+          'playlists': _playlists,
+          'lastUpdated': DateTime.now().toIso8601String(),
+        },
+        settings: {
+          'theme': prefs.getString('theme') ?? 'system',
+          'lastUpdated': DateTime.now().toIso8601String(),
+        },
+        downloadHistory: {
+          'downloads': _downloadedSongs,
+          'lastUpdated': DateTime.now().toIso8601String(),
+        },
+      );
+      
+      if (success) {
+        debugPrint('✅ Data backup created successfully');
+      } else {
+        debugPrint('⚠️ Failed to create data backup');
+      }
+    } catch (e) {
+      debugPrint('❌ Error creating backup: $e');
     }
   }
 
@@ -86,6 +146,10 @@ class MusicProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('library', jsonEncode(_library));
+      
+      // Create backup after adding to library
+      await _createBackup();
+      
       notifyListeners();
     } catch (error) {
       debugPrint('Error adding to library: $error');
@@ -117,6 +181,10 @@ class MusicProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('playlists', jsonEncode(_playlists));
+      
+      // Create backup after creating playlist
+      await _createBackup();
+      
       notifyListeners();
     } catch (error) {
       debugPrint('Error creating playlist: $error');

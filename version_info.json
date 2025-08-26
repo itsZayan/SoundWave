@@ -1,0 +1,16 @@
+{
+  "version": "1.0.5",
+  "buildNumber": 6,
+  "downloadUrl": "https://github.com/yourusername/soundwave_flutter_app/releases/download/v1.0.5/soundwave_flutter_app_v1.0.5.apk",
+  "releaseNotes": [
+    "✨ NEW: Data persistence system - Your playlists and audio files now survive app reinstalls!",
+    "🔧 IMPROVED: Audio download reliability and performance",
+    "🎵 ENHANCED: Better playlist management and organization",
+    "📱 UPDATED: Modern UI with improved user experience",
+    "🐛 FIXED: Various bug fixes and stability improvements"
+  ],
+  "releaseDate": "2024-12-19",
+  "minimumVersion": "1.0.0",
+  "forceUpdate": false,
+  "isMajorVersion": false
+}

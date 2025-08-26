@@ -10,6 +10,7 @@ import '../widgets/modern_ui_widgets.dart';
 import '../services/download_service.dart';
 import 'add_music_screen.dart';
 import 'player_screen.dart';
+import 'data_management_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigateToTab;
@@ -207,33 +208,50 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
   
   Widget _buildQuickActionsSection(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
+    return Column(
       children: [
-        _buildModernQuickAction(
-          context,
-          icon: Icons.add_circle_outline_rounded,
-          label: 'Add Music',
-          color: AppTheme.primaryColor,
-          onTap: () => _navigateToScreen(context, const AddMusicScreen()),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildModernQuickAction(
+              context,
+              icon: Icons.add_circle_outline_rounded,
+              label: 'Add Music',
+              color: AppTheme.primaryColor,
+              onTap: () => _navigateToScreen(context, const AddMusicScreen()),
+            ),
+            _buildModernQuickAction(
+              context,
+              icon: Icons.queue_music_rounded,
+              label: 'Playlists',
+              color: AppTheme.secondaryColor,
+              onTap: () => widget.onNavigateToTab?.call(3),
+            ),
+            _buildModernQuickAction(
+              context,
+              icon: Icons.shuffle_rounded,
+              label: 'Shuffle All',
+              color: AppTheme.successColor,
+              onTap: () {
+                final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+                musicProvider.shuffleAll();
+                HapticFeedback.lightImpact();
+              },
+            ),
+          ],
         ),
-        _buildModernQuickAction(
-          context,
-          icon: Icons.queue_music_rounded,
-          label: 'Playlists',
-          color: AppTheme.secondaryColor,
-          onTap: () => widget.onNavigateToTab?.call(3),
-        ),
-        _buildModernQuickAction(
-          context,
-          icon: Icons.shuffle_rounded,
-          label: 'Shuffle All',
-          color: AppTheme.successColor,
-          onTap: () {
-            final musicProvider = Provider.of<MusicProvider>(context, listen: false);
-            musicProvider.shuffleAll();
-            HapticFeedback.lightImpact();
-          },
+        const SizedBox(height: AppTheme.spacingMedium),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildModernQuickAction(
+              context,
+              icon: Icons.storage_rounded,
+              label: 'Data Management',
+              color: AppTheme.warningColor,
+              onTap: () => _navigateToScreen(context, const DataManagementScreen()),
+            ),
+          ],
         ),
       ],
     );

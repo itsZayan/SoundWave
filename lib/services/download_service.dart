@@ -82,8 +82,8 @@ class DownloadService {
       Directory? directory;
       
       if (Platform.isAndroid) {
-        // Try to get external storage directory
-        directory = Directory('/storage/emulated/0/Download/SoundWave');
+        // Use external storage directory that survives app uninstall
+        directory = Directory('/storage/emulated/0/SoundWave/Audio');
         if (!await directory.exists()) {
           await directory.create(recursive: true);
         }

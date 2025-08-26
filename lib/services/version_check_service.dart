@@ -49,6 +49,16 @@ class VersionCheckService {
   static const String _versionCheckUrl = 
       'https://raw.githubusercontent.com/itsZayan/SoundWave/main/version_info.json';
   
+  // Local version info for testing (comment out when using GitHub)
+  static const Map<String, dynamic> _localVersionInfo = {
+    'latest_version': '1.0.5',
+    'minimum_version': '1.0.0',
+    'download_url': 'https://github.com/yourusername/soundwave_flutter_app/releases/download/v1.0.5/soundwave_flutter_app_v1.0.5.apk',
+    'release_notes': '✨ NEW: Data persistence system - Your playlists and audio files now survive app reinstalls!\n🔧 IMPROVED: Audio download reliability and performance\n🎵 ENHANCED: Better playlist management and organization\n📱 UPDATED: Modern UI with improved user experience\n🐛 FIXED: Various bug fixes and stability improvements',
+    'force_update': false,
+    'release_date': '2024-12-19'
+  };
+  
   static const String _lastCheckKey = 'last_version_check';
   static const String _skipVersionKey = 'skip_version_';
   
@@ -83,15 +93,21 @@ class VersionCheckService {
         }
       } catch (e) {
         print('⚠️ Version Check: GitHub fetch failed: $e');
-        print('🔄 Version Check: GitHub unavailable, assuming no update needed');
+        print('🔄 Version Check: GitHub unavailable, using local version info for testing');
         
-        // If we can't reach GitHub, assume no update is available
-        // This prevents false update notifications when offline
-        return UpdateStatus(
-          updateAvailable: false,
-          forceUpdate: false,
-          versionInfo: null,
-        );
+        // For testing purposes, use local version info when GitHub is unavailable
+        // In production, you might want to return no update available
+        try {
+          versionInfo = VersionInfo.fromJson(_localVersionInfo);
+          print('✅ Version Check: Using local version info for testing');
+        } catch (localError) {
+          print('❌ Version Check: Local version info also failed: $localError');
+          return UpdateStatus(
+            updateAvailable: false,
+            forceUpdate: false,
+            versionInfo: null,
+          );
+        }
       }
       
       print('🔍 Version Check: Latest version = ${versionInfo.latestVersion}');

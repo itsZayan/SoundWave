@@ -13,6 +13,7 @@ class ShortcutService {
 
   // Callback for when a shortcut is pressed
   Function(String playlistId)? onShortcutPressed;
+  String? _pendingPlaylistId; // buffers a shortcut pressed before handler is ready
 
   Future<void> initialize() async {
     if (kIsWeb) return; // Quick actions not supported on web
@@ -24,12 +25,41 @@ class ShortcutService {
       // Extract playlist ID from shortcut type
       if (shortcutType.startsWith('playlist_')) {
         final playlistId = shortcutType.replaceFirst('playlist_', '');
-        onShortcutPressed?.call(playlistId);
+        if (onShortcutPressed != null) {
+          onShortcutPressed!.call(playlistId);
+        } else {
+          // Buffer until consumer registers
+          _pendingPlaylistId = playlistId;
+          print('ShortcutService: Buffered pending shortcut: $playlistId');
+        }
       }
     });
 
     // Load and set existing shortcuts
     await _loadExistingShortcuts();
+  }
+
+  /// Register shortcut press handler. If a pending shortcut exists, consume immediately.
+  void registerHandler(Function(String playlistId) handler) {
+    onShortcutPressed = handler;
+    // Drain any pending shortcut from cold start
+    if (_pendingPlaylistId != null) {
+      final pending = _pendingPlaylistId!;
+      _pendingPlaylistId = null;
+      try {
+        handler(pending);
+        print('ShortcutService: Consumed pending shortcut: $pending');
+      } catch (e) {
+        print('ShortcutService: Error consuming pending shortcut: $e');
+      }
+    }
+  }
+
+  /// Returns and clears any pending shortcut that arrived before handler registration
+  String? consumePendingShortcut() {
+    final pending = _pendingPlaylistId;
+    _pendingPlaylistId = null;
+    return pending;
   }
 
   Future<void> addPlaylistShortcut({

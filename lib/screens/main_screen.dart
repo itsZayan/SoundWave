@@ -89,10 +89,16 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   }
   
   void _initializeShortcuts() async {
-    await _shortcutService.initialize();
-    _shortcutService.onShortcutPressed = (playlistId) {
+    // Register handler first so any immediate events are handled
+    _shortcutService.registerHandler((playlistId) {
       _handlePlaylistShortcut(playlistId);
-    };
+    });
+    await _shortcutService.initialize();
+    // Consume any pending shortcut delivered on cold start
+    final pending = _shortcutService.consumePendingShortcut();
+    if (pending != null) {
+      _handlePlaylistShortcut(pending);
+    }
   }
   
   void _checkForUpdates() async {
