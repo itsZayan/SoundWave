@@ -10,11 +10,13 @@ import '../services/version_check_service.dart';
 import '../widgets/update_dialog.dart';
 import '../screens/force_update_screen.dart';
 import '../theme/app_theme.dart';
+import '../services/app_uninstall_handler.dart';
 import 'home_screen.dart';
 import 'search_screen.dart';
 import 'library_screen.dart';
 import 'playlists_screen.dart';
 import 'playlist_detail_screen.dart';
+import 'settings_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -79,6 +81,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     );
     _initializeShortcuts();
     _checkForUpdates();
+    _handleAppLifecycle();
   }
   
   @override
@@ -145,6 +148,25 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     } catch (e) {
       print('Version check failed: $e');
       // Silently fail - don't bother the user with version check errors
+    }
+  }
+
+  /// Handle app uninstall and update scenarios
+  void _handleAppLifecycle() async {
+    try {
+      final uninstallHandler = AppUninstallHandler();
+      
+      // Check if this is a fresh install or update
+      final isFreshInstall = await uninstallHandler.isFreshInstall();
+      if (isFreshInstall) {
+        print('🆕 App: Fresh install detected');
+      } else {
+        print('🔄 App: Update/reinstall detected');
+        // Handle app update
+        await uninstallHandler.handleAppUpdate();
+      }
+    } catch (e) {
+      print('❌ Error handling app lifecycle: $e');
     }
   }
   
@@ -249,6 +271,26 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         ),
       ),
       actions: [
+        // Settings Button
+        Container(
+          margin: const EdgeInsets.only(right: AppTheme.spacingSmall),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+            color: Theme.of(context).colorScheme.surface.withOpacity(0.1),
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.settings_rounded),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+              HapticFeedback.lightImpact();
+            },
+            tooltip: 'Settings',
+          ),
+        ),
+        // Theme Toggle Button
         Container(
           margin: const EdgeInsets.only(right: AppTheme.spacingMedium),
           decoration: BoxDecoration(

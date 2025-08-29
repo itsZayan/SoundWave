@@ -5,6 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import '../services/persistent_storage_service.dart';
 
 class MusicProvider extends ChangeNotifier {
   final List<Map<String, dynamic>> _library = [];
@@ -60,19 +61,50 @@ class MusicProvider extends ChangeNotifier {
   Future<void> _loadInitialData() async {
     _setLoading(true);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final libraryString = prefs.getString('library');
-      final playlistsString = prefs.getString('playlists');
+      // Initialize persistent storage service
+      final persistentStorage = PersistentStorageService();
+      await persistentStorage.initialize();
       
-      if (libraryString != null) {
-        final List<dynamic> libraryJson = jsonDecode(libraryString);
-        _library.addAll(List<Map<String, dynamic>>.from(libraryJson));
+      // Load data from persistent storage first, then fallback to SharedPreferences
+      final library = await persistentStorage.loadLibrary();
+      final playlists = await persistentStorage.loadPlaylists();
+      
+      if (library.isNotEmpty) {
+        _library.addAll(library);
+        debugPrint('✅ Loaded ${library.length} songs from persistent storage');
       }
       
-      if (playlistsString != null) {
-        final List<dynamic> playlistsJson = jsonDecode(playlistsString);
-        _playlists.addAll(List<Map<String, dynamic>>.from(playlistsJson));
+      if (playlists.isNotEmpty) {
+        _playlists.addAll(playlists);
+        debugPrint('✅ Loaded ${playlists.length} playlists from persistent storage');
       }
+      
+      // If no data in persistent storage, try SharedPreferences as fallback
+      if (_library.isEmpty || _playlists.isEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        
+        if (_library.isEmpty) {
+          final libraryString = prefs.getString('library');
+          if (libraryString != null) {
+            final List<dynamic> libraryJson = jsonDecode(libraryString);
+            _library.addAll(List<Map<String, dynamic>>.from(libraryJson));
+            debugPrint('✅ Loaded ${_library.length} songs from SharedPreferences fallback');
+          }
+        }
+        
+        if (_playlists.isEmpty) {
+          final playlistsString = prefs.getString('playlists');
+          if (playlistsString != null) {
+            final List<dynamic> playlistsJson = jsonDecode(playlistsString);
+            _playlists.addAll(List<Map<String, dynamic>>.from(playlistsJson));
+            debugPrint('✅ Loaded ${_playlists.length} playlists from SharedPreferences fallback');
+          }
+        }
+      }
+      
+      // Load settings
+      await _loadSettings();
+      
     } catch (error) {
       debugPrint('Error loading initial data: $error');
     } finally {
@@ -115,9 +147,16 @@ class MusicProvider extends ChangeNotifier {
     };
     _playlists.add(newPlaylist);
     try {
+      // Save to persistent storage first
+      final persistentStorage = PersistentStorageService();
+      await persistentStorage.savePlaylists(_playlists);
+      
+      // Also save to SharedPreferences as backup
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('playlists', jsonEncode(_playlists));
+      
       notifyListeners();
+      debugPrint('✅ Playlist "$name" created and saved to persistent storage');
     } catch (error) {
       debugPrint('Error creating playlist: $error');
     }
@@ -490,8 +529,15 @@ class MusicProvider extends ChangeNotifier {
   // Persistence helpers
   Future<void> _saveLibrary() async {
     try {
+      // Save to persistent storage first
+      final persistentStorage = PersistentStorageService();
+      await persistentStorage.saveLibrary(_library);
+      
+      // Also save to SharedPreferences as backup
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('library', jsonEncode(_library));
+      
+      debugPrint('✅ Library saved to persistent storage and SharedPreferences');
     } catch (error) {
       debugPrint('Error saving library: $error');
     }
@@ -499,10 +545,23 @@ class MusicProvider extends ChangeNotifier {
 
   Future<void> _saveSettings() async {
     try {
+      // Save to persistent storage first
+      final persistentStorage = PersistentStorageService();
+      final settings = {
+        'isAutoPlayEnabled': _isAutoPlayEnabled,
+        'isShuffled': _isShuffled,
+        'isRepeatEnabled': _isRepeatEnabled,
+        'lastUpdated': DateTime.now().toIso8601String(),
+      };
+      await persistentStorage.saveSettings(settings);
+      
+      // Also save to SharedPreferences as backup
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isAutoPlayEnabled', _isAutoPlayEnabled);
       await prefs.setBool('isShuffled', _isShuffled);
       await prefs.setBool('isRepeatEnabled', _isRepeatEnabled);
+      
+      debugPrint('✅ Settings saved to persistent storage and SharedPreferences');
     } catch (error) {
       debugPrint('Error saving settings: $error');
     }
@@ -510,10 +569,23 @@ class MusicProvider extends ChangeNotifier {
 
   Future<void> _loadSettings() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      _isAutoPlayEnabled = prefs.getBool('isAutoPlayEnabled') ?? true;
-      _isShuffled = prefs.getBool('isShuffled') ?? false;
-      _isRepeatEnabled = prefs.getBool('isRepeatEnabled') ?? false;
+      // Load from persistent storage first
+      final persistentStorage = PersistentStorageService();
+      final settings = await persistentStorage.loadSettings();
+      
+      if (settings.isNotEmpty) {
+        _isAutoPlayEnabled = settings['isAutoPlayEnabled'] ?? true;
+        _isShuffled = settings['isShuffled'] ?? false;
+        _isRepeatEnabled = settings['isRepeatEnabled'] ?? false;
+        debugPrint('✅ Settings loaded from persistent storage');
+      } else {
+        // Fallback to SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        _isAutoPlayEnabled = prefs.getBool('isAutoPlayEnabled') ?? true;
+        _isShuffled = prefs.getBool('isShuffled') ?? false;
+        _isRepeatEnabled = prefs.getBool('isRepeatEnabled') ?? false;
+        debugPrint('✅ Settings loaded from SharedPreferences fallback');
+      }
     } catch (error) {
       debugPrint('Error loading settings: $error');
     }

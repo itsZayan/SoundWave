@@ -129,225 +129,105 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _showDownloadOptions(Map<String, dynamic> video) async {
-    bool downloadAudio = true;
-    bool downloadVideo = false;
-    
     showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Video thumbnail and details
+                Container(
+                  height: 150,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    image: DecorationImage(
+                      image: NetworkImage(video['thumbnail']),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  video['title'] ?? 'Unknown Title',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  video['channel'] ?? 'Unknown Channel',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Download as Audio (MP3)',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
                   children: [
-                    // Video thumbnail and details
-                    Container(
-                      height: 150,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        image: DecorationImage(
-                          image: NetworkImage(video['thumbnail']),
-                          fit: BoxFit.cover,
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _startDownload(video);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          foregroundColor: Colors.white,
                         ),
+                        child: const Text('Download Audio'),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      video['title'] ?? 'Unknown Title',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      video['channel'] ?? 'Unknown Channel',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Select download options:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    CheckboxListTile(
-                      title: const Text('Audio (MP3)'),
-                      value: downloadAudio,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          downloadAudio = value ?? false;
-                        });
-                      },
-                      controlAffinity: ListTileControlAffinity.leading,
-                    ),
-                    CheckboxListTile(
-                      title: const Text('Video (MP4)'),
-                      value: downloadVideo,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          downloadVideo = value ?? false;
-                        });
-                      },
-                      controlAffinity: ListTileControlAffinity.leading,
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('Cancel'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: (downloadAudio || downloadVideo) ? () {
-                              Navigator.of(context).pop();
-                              _startDownload(video, downloadAudio, downloadVideo);
-                            } : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF6366F1),
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Text('Download'),
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
-              ),
-            );
-          },
+              ],
+            ),
+          ),
         );
       },
     );
   }
 
-  Future<void> _startDownload(Map<String, dynamic> video, bool downloadAudio, bool downloadVideo) async {
+  Future<void> _startDownload(Map<String, dynamic> video) async {
     final downloadService = DownloadService();
     final videoId = video['id'];
     
     // Mark as background download
     downloadService.setBackgroundDownload(videoId, true);
     
-    if (downloadVideo && downloadAudio) {
-      // Sequential download for both
-      await _startSequentialDownload(video, downloadService);
-    } else if (downloadVideo) {
-      // Video only
-      await _startSingleDownload(video, downloadService, 'video');
-    } else if (downloadAudio) {
-      // Audio only
-      await _startSingleDownload(video, downloadService, 'audio');
-    }
+    // Download audio only
+    await _startSingleDownload(video, downloadService);
   }
   
-  Future<void> _startSequentialDownload(Map<String, dynamic> video, DownloadService downloadService) async {
-    final GlobalKey<DownloadProgressDialogState> progressKey = GlobalKey<DownloadProgressDialogState>();
-    final videoId = video['id'];
-    String currentType = 'video';
-    
-    // Show enhanced download progress dialog
-    showDialog(
-      context: context,
-      barrierDismissible: true, // Allow dismissing by tapping outside
-      builder: (context) {
-        return DownloadProgressDialog(
-          key: progressKey,
-          title: video['title'] ?? 'Unknown Title',
-          videoId: videoId,
-          onCancel: (videoId) {
-            downloadService.cancelDownload(videoId);
-            downloadService.removeBackgroundDownload(videoId);
-          },
-        );
-      },
-    ).then((_) {
-      // Dialog was dismissed - downloads continue in background
-      print('Download dialog dismissed for: ${video['title']}');
-    });
-    
-    try {
-      // First download video
-      progressKey.currentState?.updateProgress(0.0, 0, 100);
-      await downloadService.downloadVideo(
-        video['url'],
-        onProgress: (progress, received, total) {
-          // Show video progress as 0-50%
-          final adjustedProgress = progress * 0.5;
-          progressKey.currentState?.updateProgress(adjustedProgress, received, total);
-        },
-        onComplete: () {
-          currentType = 'audio';
-          progressKey.currentState?.updateProgress(0.5, 50, 100);
-        },
-        onError: (error) {
-          progressKey.currentState?.setError('Video download failed: $error');
-          downloadService.removeBackgroundDownload(videoId);
-        },
-      );
-      
-      // Then download audio
-      await downloadService.downloadAudio(
-        video['url'],
-        onProgress: (progress, received, total) {
-          // Show audio progress as 50-100%
-          final adjustedProgress = 0.5 + (progress * 0.5);
-          progressKey.currentState?.updateProgress(adjustedProgress, received, total);
-        },
-        onComplete: () {
-          progressKey.currentState?.setCompleted();
-          downloadService.removeBackgroundDownload(videoId);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Both video and audio downloaded successfully!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            // Refresh library if it's visible
-            _refreshLibraryIfVisible();
-          }
-        },
-        onError: (error) {
-          progressKey.currentState?.setError('Audio download failed: $error');
-          downloadService.removeBackgroundDownload(videoId);
-        },
-      );
-    } catch (e) {
-      progressKey.currentState?.setError(e.toString());
-      downloadService.removeBackgroundDownload(videoId);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Download failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
+
   
-  Future<void> _startSingleDownload(Map<String, dynamic> video, DownloadService downloadService, String type) async {
+  Future<void> _startSingleDownload(Map<String, dynamic> video, DownloadService downloadService) async {
     final GlobalKey<DownloadProgressDialogState> progressKey = GlobalKey<DownloadProgressDialogState>();
     final videoId = video['id'];
     
@@ -369,55 +249,30 @@ class _SearchScreenState extends State<SearchScreen> {
     );
     
     try {
-      if (type == 'video') {
-        await downloadService.downloadVideo(
-          video['url'],
-          onProgress: (progress, received, total) {
-            progressKey.currentState?.updateProgress(progress, received, total);
-          },
-          onComplete: () {
-            progressKey.currentState?.setCompleted();
-            downloadService.removeBackgroundDownload(videoId);
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Video download completed successfully!'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-              _refreshLibraryIfVisible();
-            }
-          },
-          onError: (error) {
-            progressKey.currentState?.setError(error);
-            downloadService.removeBackgroundDownload(videoId);
-          },
-        );
-      } else {
-        await downloadService.downloadAudio(
-          video['url'],
-          onProgress: (progress, received, total) {
-            progressKey.currentState?.updateProgress(progress, received, total);
-          },
-          onComplete: () {
-            progressKey.currentState?.setCompleted();
-            downloadService.removeBackgroundDownload(videoId);
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Audio download completed successfully!'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-              _refreshLibraryIfVisible();
-            }
-          },
-          onError: (error) {
-            progressKey.currentState?.setError(error);
-            downloadService.removeBackgroundDownload(videoId);
-          },
-        );
-      }
+      // Download audio only
+      await downloadService.downloadAudio(
+        video['url'],
+        onProgress: (progress, received, total) {
+          progressKey.currentState?.updateProgress(progress, received, total);
+        },
+        onComplete: () {
+          progressKey.currentState?.setCompleted();
+          downloadService.removeBackgroundDownload(videoId);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Audio download completed successfully!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            _refreshLibraryIfVisible();
+          }
+        },
+        onError: (error) {
+          progressKey.currentState?.setError(error);
+          downloadService.removeBackgroundDownload(videoId);
+        },
+      );
     } catch (e) {
       progressKey.currentState?.setError(e.toString());
       downloadService.removeBackgroundDownload(videoId);

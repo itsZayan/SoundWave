@@ -10,6 +10,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'floating_download_manager.dart';
+import 'persistent_storage_service.dart';
 
 class DownloadService {
   static final DownloadService _instance = DownloadService._internal();
@@ -468,6 +469,9 @@ class DownloadService {
           'viewCount': video.engagement.viewCount,
         });
 
+        // Save to persistent storage
+        await _saveToPersistentStorage(File(filePath), title);
+        
         onComplete?.call();
         FloatingDownloadManager.completeDownload(videoId);
         return filePath;
@@ -898,6 +902,23 @@ class DownloadService {
           cancelDownload(videoId);
         },
       );
+    }
+  }
+
+  /// Save downloaded file to persistent storage
+  Future<void> _saveToPersistentStorage(File sourceFile, String fileName) async {
+    try {
+      final persistentStorage = PersistentStorageService();
+      await persistentStorage.initialize();
+      
+      final persistentPath = await persistentStorage.saveDownloadedAudio(sourceFile, fileName);
+      if (persistentPath != null) {
+        print('✅ Downloaded audio saved to persistent storage: $persistentPath');
+      } else {
+        print('⚠️ Failed to save to persistent storage, keeping in original location');
+      }
+    } catch (e) {
+      print('❌ Error saving to persistent storage: $e');
     }
   }
 
