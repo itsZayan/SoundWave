@@ -49,6 +49,10 @@ class VersionCheckService {
   static const String _versionCheckUrl = 
       'https://raw.githubusercontent.com/itsZayan/SoundWave/main/version_info.json';
   
+  // FOR TESTING: Simulate a newer version when GitHub is unavailable
+  static const String _testLatestVersion = '1.0.8';
+  static const bool _enableTestMode = true;
+  
   static const String _lastCheckKey = 'last_version_check';
   static const String _skipVersionKey = 'skip_version_';
   
@@ -83,6 +87,34 @@ class VersionCheckService {
         }
       } catch (e) {
         print('⚠️ Version Check: GitHub fetch failed: $e');
+        
+        // FOR TESTING: If GitHub is unavailable and test mode is enabled, simulate an update
+        if (_enableTestMode) {
+          print('🧪 Version Check: Test mode enabled, simulating update to $_testLatestVersion');
+          
+          final testVersionInfo = VersionInfo(
+            latestVersion: _testLatestVersion,
+            minimumVersion: '1.0.0',
+            downloadUrl: 'https://github.com/itsZayan/SoundWave/releases/latest',
+            releaseNotes: 'Test update - Bug fixes and performance improvements',
+            forceUpdate: false,
+            releaseDate: DateTime.now().toIso8601String().split('T')[0],
+          );
+          
+          final updateAvailable = _isVersionNewer(testVersionInfo.latestVersion, currentVersion);
+          final forceUpdate = testVersionInfo.forceUpdate || 
+                             _isVersionNewer(testVersionInfo.minimumVersion, currentVersion) ||
+                             _isMajorVersionChange(testVersionInfo.latestVersion, currentVersion);
+          
+          print('🧪 Version Check: Test update available = $updateAvailable, force = $forceUpdate');
+          
+          return UpdateStatus(
+            updateAvailable: updateAvailable,
+            forceUpdate: forceUpdate,
+            versionInfo: updateAvailable ? testVersionInfo : null,
+          );
+        }
+        
         print('🔄 Version Check: GitHub unavailable, assuming no update needed');
         
         // If we can't reach GitHub, assume no update is available
