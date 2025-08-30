@@ -97,7 +97,35 @@ class _SearchScreenState extends State<SearchScreen> {
           'youtubeUrl': video['url'],
         };
         
-        musicProvider.playSong(song);
+        // Add song to library if not already present
+        if (!musicProvider.library.any((s) => s['id'] == song['id'])) {
+          await musicProvider.addToLibrary(song);
+        }
+        
+        // Create a queue from current search results or trending videos
+        final currentQueue = _showTrending ? _trendingVideos : _searchResults;
+        if (currentQueue.isNotEmpty) {
+          // Convert to song format and create queue
+          final songQueue = currentQueue.map((v) => {
+            'id': v['id'],
+            'title': v['title'],
+            'artist': v['channel'],
+            'thumbnail': v['thumbnail'],
+            'duration': v['duration'] ?? 0,
+            'url': v['url'],
+            'youtubeUrl': v['url'],
+          }).toList();
+          
+          // Find the index of current song in queue
+          final songIndex = songQueue.indexWhere((s) => s['id'] == song['id']);
+          if (songIndex != -1) {
+            musicProvider.playQueue(songQueue, songIndex);
+          } else {
+            musicProvider.playSong(song);
+          }
+        } else {
+          musicProvider.playSong(song);
+        }
         
         if (mounted) {
           setState(() {

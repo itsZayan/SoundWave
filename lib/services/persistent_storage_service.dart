@@ -84,8 +84,15 @@ class PersistentStorageService {
         
         // Alternative: use external storage root
         final externalRoot = Directory('/storage/emulated/0/$_appDataDirName');
-        if (await externalRoot.exists() || await externalRoot.create(recursive: true)) {
+        if (await externalRoot.exists()) {
           return externalRoot;
+        }
+        // Try to create the directory
+        try {
+          await externalRoot.create(recursive: true);
+          return externalRoot;
+        } catch (e) {
+          print('⚠️ Failed to create external storage directory: $e');
         }
       } catch (e) {
         print('⚠️ External storage not accessible: $e');
@@ -100,8 +107,15 @@ class PersistentStorageService {
       try {
         // Try to get external downloads directory
         final downloadsDir = Directory('/storage/emulated/0/Download/$_appDataDirName');
-        if (await downloadsDir.exists() || await downloadsDir.create(recursive: true)) {
+        if (await downloadsDir.exists()) {
           return downloadsDir;
+        }
+        // Try to create the directory
+        try {
+          await downloadsDir.create(recursive: true);
+          return downloadsDir;
+        } catch (e) {
+          print('⚠️ Failed to create downloads directory: $e');
         }
       } catch (e) {
         print('⚠️ External downloads directory not accessible: $e');

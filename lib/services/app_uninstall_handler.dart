@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'persistent_storage_service.dart';
 
 class AppUninstallHandler {
@@ -277,5 +278,4 @@ class AppUninstallHandler {
   }
 }
 
-// Import for PackageInfo
-import 'package:package_info_plus/package_info_plus.dart';
+

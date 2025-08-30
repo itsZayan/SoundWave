@@ -719,14 +719,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   void _playPrevious() {
-    if (_audioService != null && !_isVideoFile) {
-      _audioService!.playPrevious();
+    if (!_isVideoFile) {
+      final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+      musicProvider.playPrevious();
     }
   }
 
   void _playNext() {
-    if (_audioService != null && !_isVideoFile) {
-      _audioService!.playNext();
+    if (!_isVideoFile) {
+      final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+      musicProvider.playNext();
     }
   }
 

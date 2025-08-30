@@ -237,6 +237,18 @@ class MusicProvider extends ChangeNotifier {
   void playSong(Map<String, dynamic> song) {
     _currentSong = song;
     _isPlaying = true;
+    
+    // Add song to queue if not already present
+    if (!_currentQueue.any((s) => s['id'] == song['id'])) {
+      _currentQueue.add(song);
+    }
+    
+    // Set current queue index to the current song
+    _currentQueueIndex = _currentQueue.indexWhere((s) => s['id'] == song['id']);
+    if (_currentQueueIndex == -1) {
+      _currentQueueIndex = _currentQueue.length - 1;
+    }
+    
     notifyListeners();
   }
 
