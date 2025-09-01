@@ -81,22 +81,22 @@ class MusicProvider extends ChangeNotifier {
       
       // If no data in persistent storage, try SharedPreferences as fallback
       if (_library.isEmpty || _playlists.isEmpty) {
-        final prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance();
         
         if (_library.isEmpty) {
-          final libraryString = prefs.getString('library');
-          if (libraryString != null) {
-            final List<dynamic> libraryJson = jsonDecode(libraryString);
-            _library.addAll(List<Map<String, dynamic>>.from(libraryJson));
+      final libraryString = prefs.getString('library');
+      if (libraryString != null) {
+        final List<dynamic> libraryJson = jsonDecode(libraryString);
+        _library.addAll(List<Map<String, dynamic>>.from(libraryJson));
             debugPrint('✅ Loaded ${_library.length} songs from SharedPreferences fallback');
           }
-        }
-        
+      }
+      
         if (_playlists.isEmpty) {
           final playlistsString = prefs.getString('playlists');
-          if (playlistsString != null) {
-            final List<dynamic> playlistsJson = jsonDecode(playlistsString);
-            _playlists.addAll(List<Map<String, dynamic>>.from(playlistsJson));
+      if (playlistsString != null) {
+        final List<dynamic> playlistsJson = jsonDecode(playlistsString);
+        _playlists.addAll(List<Map<String, dynamic>>.from(playlistsJson));
             debugPrint('✅ Loaded ${_playlists.length} playlists from SharedPreferences fallback');
           }
         }
@@ -592,10 +592,10 @@ class MusicProvider extends ChangeNotifier {
         debugPrint('✅ Settings loaded from persistent storage');
       } else {
         // Fallback to SharedPreferences
-        final prefs = await SharedPreferences.getInstance();
-        _isAutoPlayEnabled = prefs.getBool('isAutoPlayEnabled') ?? true;
-        _isShuffled = prefs.getBool('isShuffled') ?? false;
-        _isRepeatEnabled = prefs.getBool('isRepeatEnabled') ?? false;
+      final prefs = await SharedPreferences.getInstance();
+      _isAutoPlayEnabled = prefs.getBool('isAutoPlayEnabled') ?? true;
+      _isShuffled = prefs.getBool('isShuffled') ?? false;
+      _isRepeatEnabled = prefs.getBool('isRepeatEnabled') ?? false;
         debugPrint('✅ Settings loaded from SharedPreferences fallback');
       }
     } catch (error) {

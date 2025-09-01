@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/theme_provider.dart';
 import '../providers/music_provider.dart';
 import '../services/youtube_service.dart';
@@ -23,11 +24,19 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoading = false;
   bool _showTrending = true;
   String? _loadingVideoId;
+  final Set<String> _downloadingVideos = {}; // Track downloading videos
+  
+  // Search history and suggestions
+  List<String> _searchHistory = [];
+  List<String> _recentArtists = [];
+  List<String> _popularSearches = ['music', 'songs', 'latest', 'trending', 'pop', 'rock', 'hip hop'];
 
   @override
   void initState() {
     super.initState();
     _loadTrendingVideos();
+    _loadSearchHistory();
+    _loadRecentArtists();
   }
 
   Future<void> _loadTrendingVideos() async {
@@ -43,9 +52,91 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
+  // Load search history from SharedPreferences
+  Future<void> _loadSearchHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final history = prefs.getStringList('search_history') ?? [];
+      setState(() {
+        _searchHistory = history.take(10).toList(); // Keep last 10 searches
+      });
+    } catch (e) {
+      print('Error loading search history: $e');
+    }
+  }
+
+  // Save search to history
+  Future<void> _saveSearchToHistory(String query) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final history = List<String>.from(_searchHistory);
+      
+      // Remove if already exists and add to front
+      history.remove(query);
+      history.insert(0, query);
+      
+      // Keep only last 10 searches
+      if (history.length > 10) {
+        history.removeRange(10, history.length);
+      }
+      
+      await prefs.setStringList('search_history', history);
+      setState(() {
+        _searchHistory = history;
+      });
+    } catch (e) {
+      print('Error saving search history: $e');
+    }
+  }
+
+  // Load recent artists from library
+  Future<void> _loadRecentArtists() async {
+    try {
+      final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+      final library = musicProvider.library;
+      
+      // Extract unique artists from library
+      final artists = <String>{};
+      for (final song in library) {
+        final artist = song['artist'] ?? song['author'];
+        if (artist != null && artist != 'Unknown Artist') {
+          artists.add(artist);
+        }
+      }
+      
+      setState(() {
+        _recentArtists = artists.take(8).toList(); // Keep top 8 artists
+      });
+    } catch (e) {
+      print('Error loading recent artists: $e');
+    }
+  }
+
+  // Clear search history
+  Future<void> _clearSearchHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('search_history');
+      setState(() {
+        _searchHistory.clear();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Search history cleared'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      print('Error clearing search history: $e');
+    }
+  }
+
   Future<void> _performSearch() async {
     final query = _searchController.text.trim();
     if (query.isEmpty) return;
+
+    // Save search to history
+    await _saveSearchToHistory(query);
 
     setState(() {
       _isLoading = true;
@@ -124,7 +215,7 @@ class _SearchScreenState extends State<SearchScreen> {
             musicProvider.playSong(song);
           }
         } else {
-          musicProvider.playSong(song);
+        musicProvider.playSong(song);
         }
         
         if (mounted) {
@@ -160,83 +251,83 @@ class _SearchScreenState extends State<SearchScreen> {
     showDialog(
       context: context,
       builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Video thumbnail and details
-                Container(
-                  height: 150,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    image: DecorationImage(
-                      image: NetworkImage(video['thumbnail']),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  video['title'] ?? 'Unknown Title',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  video['channel'] ?? 'Unknown Channel',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Download as Audio (MP3)',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
+                    // Video thumbnail and details
+                    Container(
+                      height: 150,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        image: DecorationImage(
+                          image: NetworkImage(video['thumbnail']),
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
+                    const SizedBox(height: 16),
+                    Text(
+                      video['title'] ?? 'Unknown Title',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      video['channel'] ?? 'Unknown Channel',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                  'Download as Audio (MP3)',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Cancel'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
                         onPressed: () {
-                          Navigator.of(context).pop();
+                              Navigator.of(context).pop();
                           _startDownload(video);
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1),
-                          foregroundColor: Colors.white,
-                        ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF6366F1),
+                              foregroundColor: Colors.white,
+                            ),
                         child: const Text('Download Audio'),
-                      ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
+              ),
         );
       },
     );
@@ -245,6 +336,16 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _startDownload(Map<String, dynamic> video) async {
     final downloadService = DownloadService();
     final videoId = video['id'];
+    
+    // Check if already downloading
+    if (_downloadingVideos.contains(videoId)) {
+      return; // Already downloading, don't start another
+    }
+    
+    // Mark as downloading
+    setState(() {
+      _downloadingVideos.add(videoId);
+    });
     
     // Mark as background download
     downloadService.setBackgroundDownload(videoId, true);
@@ -278,33 +379,44 @@ class _SearchScreenState extends State<SearchScreen> {
     
     try {
       // Download audio only
-      await downloadService.downloadAudio(
-        video['url'],
-        onProgress: (progress, received, total) {
-          progressKey.currentState?.updateProgress(progress, received, total);
-        },
-        onComplete: () {
-          progressKey.currentState?.setCompleted();
-          downloadService.removeBackgroundDownload(videoId);
+        await downloadService.downloadAudio(
+          video['url'],
+          onProgress: (progress, received, total) {
+            progressKey.currentState?.updateProgress(progress, received, total);
+          },
+          onComplete: () {
+            progressKey.currentState?.setCompleted();
+            downloadService.removeBackgroundDownload(videoId);
+            if (mounted) {
+            setState(() {
+              _downloadingVideos.remove(videoId);
+            });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Audio download completed successfully!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              _refreshLibraryIfVisible();
+            }
+          },
+          onError: (error) {
+            progressKey.currentState?.setError(error);
+            downloadService.removeBackgroundDownload(videoId);
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Audio download completed successfully!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            _refreshLibraryIfVisible();
+            setState(() {
+              _downloadingVideos.remove(videoId);
+            });
           }
-        },
-        onError: (error) {
-          progressKey.currentState?.setError(error);
-          downloadService.removeBackgroundDownload(videoId);
-        },
-      );
+          },
+        );
     } catch (e) {
       progressKey.currentState?.setError(e.toString());
       downloadService.removeBackgroundDownload(videoId);
       if (mounted) {
+        setState(() {
+          _downloadingVideos.remove(videoId);
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Download failed: $e'),
@@ -349,26 +461,61 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       body: Column(
         children: [
-          // Search bar
+          // Enhanced Search Bar with Suggestions
           Container(
             padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search for music on YouTube...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: _performSearch,
+            child: Column(
+              children: [
+                // Search Input
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search for music on YouTube...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_searchController.text.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _showTrending = true;
+                                _searchResults.clear();
+                              });
+                            },
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.search),
+                          onPressed: _performSearch,
+                        ),
+                      ],
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(25),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF2A2A2A) : Colors.grey[100],
+                  ),
+                  onSubmitted: (_) => _performSearch(),
+                  onChanged: (value) {
+                    setState(() {
+                      if (value.isEmpty) {
+                        _showTrending = true;
+                        _searchResults.clear();
+                      }
+                    });
+                  },
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: isDark ? const Color(0xFF2A2A2A) : Colors.grey[100],
-              ),
-              onSubmitted: (_) => _performSearch(),
+                
+                // Search Suggestions (when trending is shown)
+                if (_showTrending && _searchController.text.isEmpty) ...[
+                  const SizedBox(height: 16),
+                  _buildSearchSuggestions(isDark),
+                ],
+              ],
             ),
           ),
           
@@ -539,12 +686,151 @@ class _SearchScreenState extends State<SearchScreen> {
                     onPressed: () => _playVideo(video),
                     tooltip: 'Play',
                   ),
-            IconButton(
+            _downloadingVideos.contains(video['id'])
+                ? Container(
+                    width: 48,
+                    height: 48,
+                    padding: const EdgeInsets.all(12),
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                    ),
+                  )
+                : IconButton(
                     icon: const Icon(Icons.download, color: Colors.green),
                     onPressed: () => _showDownloadOptions(video),
                     tooltip: 'Download',
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // Build search suggestions widget
+  Widget _buildSearchSuggestions(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Search History
+        if (_searchHistory.isNotEmpty) ...[
+          _buildSuggestionSection(
+            'Recent Searches',
+            _searchHistory,
+            Icons.history,
+            isDark,
+            onTap: (query) {
+              _searchController.text = query;
+              _performSearch();
+            },
+            onClear: _clearSearchHistory,
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        // Recent Artists
+        if (_recentArtists.isNotEmpty) ...[
+          _buildSuggestionSection(
+            'Recent Artists',
+            _recentArtists,
+            Icons.person,
+            isDark,
+            onTap: (artist) {
+              _searchController.text = artist;
+              _performSearch();
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        // Popular Searches
+        _buildSuggestionSection(
+          'Popular Searches',
+          _popularSearches,
+          Icons.trending_up,
+          isDark,
+          onTap: (query) {
+            _searchController.text = query;
+            _performSearch();
+          },
+        ),
+      ],
+    );
+  }
+
+  // Build suggestion section
+  Widget _buildSuggestionSection(
+    String title,
+    List<String> items,
+    IconData icon,
+    bool isDark, {
+    required Function(String) onTap,
+    VoidCallback? onClear,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 18, color: Colors.grey[600]),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.grey[300] : Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+            if (onClear != null)
+              TextButton(
+                onPressed: onClear,
+                child: Text(
+                  'Clear',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: items.map((item) => _buildSuggestionChip(item, isDark, onTap)).toList(),
+        ),
+      ],
+    );
+  }
+
+  // Build suggestion chip
+  Widget _buildSuggestionChip(String text, bool isDark, Function(String) onTap) {
+    return GestureDetector(
+      onTap: () => onTap(text),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[800] : Colors.grey[200],
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            color: isDark ? Colors.grey[300] : Colors.grey[700],
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );

@@ -215,7 +215,7 @@ class _BottomMusicPlayerState extends State<BottomMusicPlayer> with TickerProvid
                               IconButton(
                                 icon: const Icon(Icons.skip_previous),
                                 onPressed: () {
-                                  audioService.playPrevious();
+                                  audioService.playPreviousInPlaylist();
                                 },
                                 iconSize: 24,
                                 color: isDark ? Colors.white70 : Colors.black54,
@@ -250,7 +250,7 @@ class _BottomMusicPlayerState extends State<BottomMusicPlayer> with TickerProvid
                               IconButton(
                                 icon: const Icon(Icons.skip_next),
                                 onPressed: () {
-                                  audioService.playNext();
+                                  audioService.playNextInPlaylist();
                                 },
                                 iconSize: 24,
                                 color: isDark ? Colors.white70 : Colors.black54,

@@ -6,6 +6,7 @@ import '../providers/music_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/download_service.dart';
 import '../services/shortcut_service.dart';
+import '../services/audio_service.dart';
 import 'player_screen.dart';
 
 class PlaylistDetailScreen extends StatefulWidget {
@@ -413,6 +414,29 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       // Open audio file in internal player
       final musicProvider = Provider.of<MusicProvider>(context, listen: false);
       musicProvider.playSong(song);
+      
+      // Set up playlist queue for auto-play
+      final audioService = Provider.of<GlobalAudioService>(context, listen: false);
+      final playlistSongs = widget.playlist['songs'] as List;
+      
+      // Convert playlist songs to proper format for audio service
+      final playlistForQueue = playlistSongs.map((s) => {
+        'id': s['id'],
+        'title': s['title'],
+        'artist': s['artist'] ?? 'Unknown Artist',
+        'thumbnail': s['thumbnail'] ?? '',
+        'duration': s['duration'] ?? 0,
+        'url': s['url'] ?? s['localPath'] ?? s['filePath'],
+        'localPath': s['localPath'] ?? s['filePath'],
+        'isLocal': s['isLocal'] ?? s['isDownloaded'] ?? false,
+        'fileType': s['fileType'] ?? 'audio',
+      }).toList();
+      
+      // Find current song index in playlist
+      final currentIndex = playlistForQueue.indexWhere((s) => s['id'] == song['id']);
+      
+      // Set playlist queue for auto-play
+      audioService.setPlaylistQueue(playlistForQueue, currentIndex >= 0 ? currentIndex : 0);
       
       Navigator.push(
         context,

@@ -361,13 +361,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
           ),
         ),
         child: SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Column(
               children: [
                 const SizedBox(height: 20),
-        // Album Art / Video Player
-        _isVideoFile ? _buildVideoPlayer() : _buildAlbumArt(),
+                // Album Art / Video Player
+                _isVideoFile ? _buildVideoPlayer() : _buildAlbumArt(),
                 const SizedBox(height: 40),
                 // Song Info
                 _buildSongInfo(isDark),
@@ -380,7 +380,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 const SizedBox(height: 30),
                 // Shuffle and Repeat Controls
                 _buildShuffleRepeatControls(isDark),
-                const Spacer(),
+                const SizedBox(height: 50), // Add bottom padding instead of Spacer
               ],
             ),
           ),
@@ -720,15 +720,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   void _playPrevious() {
     if (!_isVideoFile) {
-      final musicProvider = Provider.of<MusicProvider>(context, listen: false);
-      musicProvider.playPrevious();
+      _audioService?.playPreviousInPlaylist();
     }
   }
 
   void _playNext() {
     if (!_isVideoFile) {
-      final musicProvider = Provider.of<MusicProvider>(context, listen: false);
-      musicProvider.playNext();
+      _audioService?.playNextInPlaylist();
     }
   }
 

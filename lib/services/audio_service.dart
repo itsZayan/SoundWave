@@ -283,12 +283,25 @@ class GlobalAudioService extends ChangeNotifier {
   }
 
   void _handleSongCompletion() {
+    print('AudioService: Song completed, handling next song...');
+    print('AudioService: Repeat mode: $_repeatMode');
+    print('AudioService: Auto-play enabled: $_isAutoPlayEnabled');
+    print('AudioService: Playlist queue length: ${_playlistQueue.length}');
+    print('AudioService: Current playlist index: $_currentPlaylistIndex');
+    
     if (_repeatMode == RepeatMode.one) {
+      print('AudioService: Repeating current song');
       playSong(_currentSong!);
     } else if (_isAutoPlayEnabled && _playlistQueue.isNotEmpty) {
+      print('AudioService: Auto-playing next song in playlist');
       _playNextInPlaylist();
     } else if (_queue.isNotEmpty) {
+      print('AudioService: Playing next song in queue');
       playNext();
+    } else {
+      print('AudioService: No more songs to play');
+      _isPlaying = false;
+      notifyListeners();
     }
   }
 

@@ -8,6 +8,7 @@ import '../providers/theme_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/modern_ui_widgets.dart';
 import '../services/download_service.dart';
+import '../services/audio_service.dart';
 import 'add_music_screen.dart';
 import 'player_screen.dart';
 
@@ -231,8 +232,49 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           color: AppTheme.successColor,
           onTap: () {
             final musicProvider = Provider.of<MusicProvider>(context, listen: false);
-            musicProvider.shuffleAll();
-            HapticFeedback.lightImpact();
+            final audioService = Provider.of<GlobalAudioService>(context, listen: false);
+            
+            // Get all available songs
+            final allSongs = <Map<String, dynamic>>[];
+            allSongs.addAll(musicProvider.getDownloadedSongs());
+            allSongs.addAll(musicProvider.getImportedSongs());
+            allSongs.addAll(musicProvider.library);
+            
+            // Remove duplicates
+            final uniqueSongs = <String, Map<String, dynamic>>{};
+            for (final song in allSongs) {
+              final id = song['id'] ?? song['url'] ?? song['title'];
+              if (id != null && !uniqueSongs.containsKey(id)) {
+                uniqueSongs[id] = song;
+              }
+            }
+            
+            final songsList = uniqueSongs.values.toList();
+            
+            if (songsList.isNotEmpty) {
+              // Shuffle the songs
+              songsList.shuffle();
+              
+              // Set up the queue and start playing
+              audioService.setPlaylistQueue(songsList, 0);
+              
+              // Navigate to player with first song
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PlayerScreen(song: songsList.first),
+                ),
+              );
+              
+              HapticFeedback.lightImpact();
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('No songs available to shuffle'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            }
           },
         ),
       ],

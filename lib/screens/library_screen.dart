@@ -23,6 +23,11 @@ class _LibraryScreenState extends State<LibraryScreen> with TickerProviderStateM
   List<Map<String, dynamic>> _importedFiles = [];
   bool _isLoading = true;
   final DownloadService _downloadService = DownloadService();
+  
+  // Sorting and filtering options
+  String _sortBy = 'name'; // 'name', 'artist', 'date', 'duration', 'playCount'
+  bool _sortAscending = true;
+  String _filterBy = 'all'; // 'all', 'audio', 'video', 'downloaded', 'imported'
 
   @override
   void initState() {
@@ -192,6 +197,98 @@ class _LibraryScreenState extends State<LibraryScreen> with TickerProviderStateM
     }
   }
 
+  // Sort files based on current sorting options
+  List<Map<String, dynamic>> _getSortedFiles(List<Map<String, dynamic>> files) {
+    final sortedFiles = List<Map<String, dynamic>>.from(files);
+    
+    switch (_sortBy) {
+      case 'name':
+        sortedFiles.sort((a, b) {
+          final aTitle = (a['title'] ?? '').toString().toLowerCase();
+          final bTitle = (b['title'] ?? '').toString().toLowerCase();
+          return _sortAscending ? aTitle.compareTo(bTitle) : bTitle.compareTo(aTitle);
+        });
+        break;
+      case 'artist':
+        sortedFiles.sort((a, b) {
+          final aArtist = (a['artist'] ?? a['author'] ?? '').toString().toLowerCase();
+          final bArtist = (b['artist'] ?? b['author'] ?? '').toString().toLowerCase();
+          return _sortAscending ? aArtist.compareTo(bArtist) : bArtist.compareTo(aArtist);
+        });
+        break;
+      case 'date':
+        sortedFiles.sort((a, b) {
+          final aDate = DateTime.tryParse(a['addedAt'] ?? a['downloadedAt'] ?? '') ?? DateTime(1970);
+          final bDate = DateTime.tryParse(b['addedAt'] ?? b['downloadedAt'] ?? '') ?? DateTime(1970);
+          return _sortAscending ? aDate.compareTo(bDate) : bDate.compareTo(aDate);
+        });
+        break;
+      case 'duration':
+        sortedFiles.sort((a, b) {
+          final aDuration = (a['duration'] ?? 0) as int;
+          final bDuration = (b['duration'] ?? 0) as int;
+          return _sortAscending ? aDuration.compareTo(bDuration) : bDuration.compareTo(aDuration);
+        });
+        break;
+      case 'playCount':
+        sortedFiles.sort((a, b) {
+          final aCount = (a['playCount'] ?? 0) as int;
+          final bCount = (b['playCount'] ?? 0) as int;
+          return _sortAscending ? aCount.compareTo(bCount) : bCount.compareTo(aCount);
+        });
+        break;
+    }
+    
+    return sortedFiles;
+  }
+
+  // Filter files based on current filter options
+  List<Map<String, dynamic>> _getFilteredFiles(List<Map<String, dynamic>> files) {
+    switch (_filterBy) {
+      case 'audio':
+        return files.where((file) => 
+          file['fileType'] == 'audio' || !file['localPath'].toString().endsWith('.mp4')
+        ).toList();
+      case 'video':
+        return files.where((file) => 
+          file['fileType'] == 'video' || file['localPath'].toString().endsWith('.mp4')
+        ).toList();
+      case 'downloaded':
+        return files.where((file) => file['isDownloaded'] == true).toList();
+      case 'imported':
+        return files.where((file) => file['isImported'] == true).toList();
+      default:
+        return files;
+    }
+  }
+
+  // Get library statistics
+  Map<String, dynamic> _getLibraryStats() {
+    final allFiles = [..._downloadedFiles, ..._importedFiles];
+    final audioFiles = allFiles.where((file) => 
+      file['fileType'] == 'audio' || !file['localPath'].toString().endsWith('.mp4')
+    ).toList();
+    final videoFiles = allFiles.where((file) => 
+      file['fileType'] == 'video' || file['localPath'].toString().endsWith('.mp4')
+    ).toList();
+    
+    int totalDuration = 0;
+    int totalSize = 0;
+    
+    for (final file in allFiles) {
+      totalDuration += (file['duration'] ?? 0) as int;
+      // Note: File size calculation would require additional implementation
+    }
+    
+    return {
+      'totalFiles': allFiles.length,
+      'audioFiles': audioFiles.length,
+      'videoFiles': videoFiles.length,
+      'totalDuration': totalDuration,
+      'totalSize': totalSize,
+    };
+  }
+
   Future<void> _importSongsFromDevice() async {
     try {
       final musicProvider = Provider.of<MusicProvider>(context, listen: false);
@@ -216,6 +313,139 @@ class _LibraryScreenState extends State<LibraryScreen> with TickerProviderStateM
         );
       }
     }
+  }
+
+  // Show sorting and filtering options
+  void _showSortingOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Sort By',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              children: [
+                _buildSortChip('Name', 'name'),
+                _buildSortChip('Artist', 'artist'),
+                _buildSortChip('Date Added', 'date'),
+                _buildSortChip('Duration', 'duration'),
+                _buildSortChip('Play Count', 'playCount'),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Text(
+                  'Order: ',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(width: 8),
+                ChoiceChip(
+                  label: const Text('A-Z'),
+                  selected: _sortAscending,
+                  onSelected: (selected) {
+                    setState(() {
+                      _sortAscending = selected;
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+                const SizedBox(width: 8),
+                ChoiceChip(
+                  label: const Text('Z-A'),
+                  selected: !_sortAscending,
+                  onSelected: (selected) {
+                    setState(() {
+                      _sortAscending = selected;
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Show filtering options
+  void _showFilteringOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Filter By',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              children: [
+                _buildFilterChip('All', 'all'),
+                _buildFilterChip('Audio Only', 'audio'),
+                _buildFilterChip('Video Only', 'video'),
+                _buildFilterChip('Downloaded', 'downloaded'),
+                _buildFilterChip('Imported', 'imported'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Build sort chip
+  Widget _buildSortChip(String label, String value) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: _sortBy == value,
+      onSelected: (selected) {
+        setState(() {
+          _sortBy = value;
+        });
+        Navigator.pop(context);
+      },
+    );
+  }
+
+  // Build filter chip
+  Widget _buildFilterChip(String label, String value) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: _filterBy == value,
+      onSelected: (selected) {
+        setState(() {
+          _filterBy = value;
+        });
+        Navigator.pop(context);
+      },
+    );
+  }
+
+  // Format duration from seconds to MM:SS
+  String _formatDuration(int seconds) {
+    if (seconds <= 0) return '0:00';
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
+    return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
   }
 
   Widget _buildDownloadedTab(bool isDark) {
@@ -252,63 +482,88 @@ class _LibraryScreenState extends State<LibraryScreen> with TickerProviderStateM
       );
     }
     
+    final sortedAndFilteredFiles = _getSortedFiles(_getFilteredFiles(_downloadedFiles));
+    
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _downloadedFiles.length,
+      itemCount: sortedAndFilteredFiles.length,
       itemBuilder: (context, index) {
-        final metadata = _downloadedFiles[index];
+        final metadata = sortedAndFilteredFiles[index];
         return _buildSongTile(metadata, isDark, true);
       },
     );
   }
 
   Widget _buildImportedTab(bool isDark) {
-    if (_importedFiles.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.phone_android,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No Imported Songs',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[400],
-                fontWeight: FontWeight.w500,
+    return Column(
+      children: [
+        // Always show import button at the top
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.all(16),
+          child: ElevatedButton.icon(
+            onPressed: _importSongsFromDevice,
+            icon: const Icon(Icons.file_upload),
+            label: const Text('Import More Songs'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Import songs from your device',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: _importSongsFromDevice,
-              icon: const Icon(Icons.file_upload),
-              label: const Text('Import Songs'),
-            ),
-          ],
+          ),
         ),
-      );
-    }
-    
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _importedFiles.length,
-      itemBuilder: (context, index) {
-        final song = _importedFiles[index];
-        return _buildSongTile(song, isDark, false);
-      },
+        
+        // Show imported songs or empty state
+        Expanded(
+          child: _importedFiles.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.phone_android,
+                        size: 64,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No Imported Songs',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey[400],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Import songs from your device to get started',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[500],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                )
+              : Builder(
+                  builder: (context) {
+                    final sortedAndFilteredFiles = _getSortedFiles(_getFilteredFiles(_importedFiles));
+                    return ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: sortedAndFilteredFiles.length,
+                      itemBuilder: (context, index) {
+                        final song = sortedAndFilteredFiles[index];
+                        return _buildSongTile(song, isDark, false);
+                      },
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
@@ -425,14 +680,41 @@ class _LibraryScreenState extends State<LibraryScreen> with TickerProviderStateM
     // Mark as played to add to library
     musicProvider.incrementPlayCount(song);
     
+    // Prepare song data for playback with proper local file handling
+    final songForPlayback = {
+      'id': song['id'],
+      'title': song['title'],
+      'artist': song['artist'] ?? 'Unknown Artist',
+      'thumbnail': song['thumbnail'] ?? '',
+      'duration': song['duration'] ?? 0,
+      'url': song['filePath'] ?? song['localPath'], // Use filePath for imported songs
+      'localPath': song['filePath'] ?? song['localPath'],
+      'isLocal': true,
+      'fileType': 'audio',
+      'isImported': true,
+    };
+    
     // Set up playlist queue for auto-play
     final audioService = Provider.of<GlobalAudioService>(context, listen: false);
-    audioService.setPlaylistQueue(_importedFiles, _importedFiles.indexOf(song));
+    final playlistForQueue = _importedFiles.map((s) => {
+      'id': s['id'],
+      'title': s['title'],
+      'artist': s['artist'] ?? 'Unknown Artist',
+      'thumbnail': s['thumbnail'] ?? '',
+      'duration': s['duration'] ?? 0,
+      'url': s['filePath'] ?? s['localPath'],
+      'localPath': s['filePath'] ?? s['localPath'],
+      'isLocal': true,
+      'fileType': 'audio',
+      'isImported': true,
+    }).toList();
+    
+    audioService.setPlaylistQueue(playlistForQueue, _importedFiles.indexOf(song));
     
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PlayerScreen(song: song),
+        builder: (context) => PlayerScreen(song: songForPlayback),
       ),
     );
   }
@@ -453,6 +735,49 @@ class _LibraryScreenState extends State<LibraryScreen> with TickerProviderStateM
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
         actions: [
+          // Library Statistics
+          IconButton(
+            icon: const Icon(Icons.analytics),
+            onPressed: () {
+              final stats = _getLibraryStats();
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Library Statistics'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Total Files: ${stats['totalFiles']}'),
+                      Text('Audio Files: ${stats['audioFiles']}'),
+                      Text('Video Files: ${stats['videoFiles']}'),
+                      Text('Total Duration: ${_formatDuration(stats['totalDuration'])}'),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            tooltip: 'Library Statistics',
+          ),
+          // Filter Button
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            onPressed: _showFilteringOptions,
+            tooltip: 'Filter Library',
+          ),
+          // Sort Button
+          IconButton(
+            icon: const Icon(Icons.sort),
+            onPressed: _showSortingOptions,
+            tooltip: 'Sort Library',
+          ),
+          // Refresh Button
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -460,6 +785,7 @@ class _LibraryScreenState extends State<LibraryScreen> with TickerProviderStateM
               _loadLibraryData();
             },
           ),
+          // Import Menu
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'import') {

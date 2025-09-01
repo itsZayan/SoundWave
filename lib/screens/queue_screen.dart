@@ -23,8 +23,8 @@ class _QueueScreenState extends State<QueueScreen> {
     return Consumer2<GlobalAudioService, ThemeProvider>(
       builder: (context, audioService, themeProvider, child) {
         final isDark = themeProvider.isDarkMode;
-        final queue = audioService.queue;
-        final currentIndex = audioService.currentIndex;
+        final queue = audioService.playlistQueue.isNotEmpty ? audioService.playlistQueue : audioService.queue;
+        final currentIndex = audioService.playlistQueue.isNotEmpty ? audioService.currentPlaylistIndex : audioService.currentIndex;
 
         return Scaffold(
           backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,

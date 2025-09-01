@@ -80,11 +80,20 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initializeApp() async {
-    // Simulate initialization process
-    await Future.delayed(const Duration(milliseconds: 2000));
+    // Start initialization immediately
+    final initStartTime = DateTime.now();
     
+    // Call the initialization callback immediately to start app loading
     if (mounted && widget.onInitializationComplete != null) {
       widget.onInitializationComplete!();
+    }
+    
+    // Ensure minimum splash screen duration for smooth UX
+    final elapsed = DateTime.now().difference(initStartTime);
+    const minDuration = Duration(milliseconds: 1500); // Reduced from 2000ms
+    
+    if (elapsed < minDuration) {
+      await Future.delayed(minDuration - elapsed);
     }
   }
 
