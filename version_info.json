@@ -2,7 +2,7 @@
   "latest_version": "2.0.0",
   "minimum_version": "1.0.0",
   "download_url": "https://github.com/itsZayan/SoundWave/releases/download/v2.0.0/Soundwavev2.0.0.apk",
-  "release_notes": "🚀 MAJOR UPDATE - Force Update Required\n\n✨ What's New in v2.0.0:\n\nEnhanced Search & Discovery:\n• Smart search suggestions with recent searches\n• Popular search recommendations\n• Recent artists from your library\n• Search history management\n• Quick search filters\n\n📚 Improved Library Organization:\n• Advanced sorting options (Name, Artist, Date, Duration, Play Count)\n• Smart filtering (Audio/Video, Downloaded/Imported)\n• Library statistics dashboard\n• Better file organization\n• Enhanced import functionality\n\n🎵 Better Audio Experience:\n• Fixed imported audio playback issues\n• Improved queue system for playlists\n• Enhanced mini player controls\n• Better next/previous navigation\n• Optimized splash screen timing\n\n🔧 Bug Fixes & Improvements:\n• Fixed bottom overflow in player screen\n• Improved download progress handling\n• Better error handling for downloads\n• Enhanced app performance\n• Smoother user experience\n\n⚠️ IMPORTANT: This is a force update required for new features to work properly.\n\n📥 Download now to experience the enhanced SoundWave!",
+  "release_notes": "Major update: smarter search, improved library organization, better audio playback, and fixes. Force update required.",
   "force_update": true,
   "release_date": "2024-01-15"
 }
