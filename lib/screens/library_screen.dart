@@ -668,6 +668,15 @@ class _LibraryScreenState extends State<LibraryScreen> with TickerProviderStateM
                 onPressed: () => _deleteDownload(songData),
                 tooltip: 'Delete',
               ),
+            if (!isDownloaded)
+              IconButton(
+                icon: const Icon(
+                  Icons.delete,
+                  color: Colors.red,
+                ),
+                onPressed: () => _confirmDeleteImported(songData),
+                tooltip: 'Remove from Library',
+              ),
           ],
         ),
       ),
@@ -719,6 +728,35 @@ class _LibraryScreenState extends State<LibraryScreen> with TickerProviderStateM
     );
   }
 
+  Future<void> _confirmDeleteImported(Map<String, dynamic> songData) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Imported Song'),
+        content: Text('Remove "${songData['title']}" from your library?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+      final id = songData['id']?.toString();
+      if (id != null) {
+        await musicProvider.removeFromLibrary(id);
+        _loadLibraryData();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -764,18 +802,6 @@ class _LibraryScreenState extends State<LibraryScreen> with TickerProviderStateM
               );
             },
             tooltip: 'Library Statistics',
-          ),
-          // Filter Button
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _showFilteringOptions,
-            tooltip: 'Filter Library',
-          ),
-          // Sort Button
-          IconButton(
-            icon: const Icon(Icons.sort),
-            onPressed: _showSortingOptions,
-            tooltip: 'Sort Library',
           ),
           // Refresh Button
           IconButton(

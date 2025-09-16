@@ -459,8 +459,9 @@ class _SearchScreenState extends State<SearchScreen> {
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),
-      body: Column(
-        children: [
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
           // Enhanced Search Bar with Suggestions
           Container(
             padding: const EdgeInsets.all(16),
@@ -520,19 +521,22 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           
           // Content
-          Expanded(
-            child: _isLoading
-                ? Center(
+          _isLoading
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
                     child: SpinKitWave(
                       color: const Color(0xFF6366F1),
                       size: 30,
                     ),
-                  )
-                : _showTrending
-                    ? _buildTrendingSection(isDark)
-                    : _buildSearchResults(isDark),
-          ),
+                  ),
+                )
+              : _showTrending
+                  ? _buildTrendingSection(isDark)
+                  : _buildSearchResults(isDark),
+          const SizedBox(height: 16),
         ],
+        ),
       ),
     );
   }
@@ -552,22 +556,25 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
         ),
-        Expanded(
-          child: _trendingVideos.isEmpty
-              ? Center(
+        _trendingVideos.isEmpty
+            ? Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
                   child: SpinKitWave(
                     color: const Color(0xFF6366F1),
                     size: 30,
                   ),
-                )
-              : ListView.builder(
-                  itemCount: _trendingVideos.length,
-                  itemBuilder: (context, index) {
-                    final video = _trendingVideos[index];
-                    return _buildVideoTile(video, isDark);
-                  },
                 ),
-        ),
+              )
+            : ListView.builder(
+                itemCount: _trendingVideos.length,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemBuilder: (context, index) {
+                  final video = _trendingVideos[index];
+                  return _buildVideoTile(video, isDark);
+                },
+              ),
       ],
     );
   }
@@ -599,6 +606,8 @@ class _SearchScreenState extends State<SearchScreen> {
 
     return ListView.builder(
       itemCount: _searchResults.length,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemBuilder: (context, index) {
         final video = _searchResults[index];
         return _buildVideoTile(video, isDark);

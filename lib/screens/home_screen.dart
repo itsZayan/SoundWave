@@ -388,7 +388,55 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: ModernCard(
                 onTap: () {
                   HapticFeedback.lightImpact();
-                  _navigateToScreen(context, PlayerScreen(song: song));
+                  final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+                  final audioService = Provider.of<GlobalAudioService>(context, listen: false);
+
+                  // Prepare selected song for playback
+                  final Map<String, dynamic> preparedSong = Map<String, dynamic>.from(song);
+                  final localPath = preparedSong['localPath'] ?? preparedSong['filePath'];
+                  if (localPath != null) {
+                    preparedSong['isLocal'] = true;
+                    preparedSong['localPath'] = localPath;
+                    preparedSong['url'] = localPath;
+                    preparedSong['fileType'] = preparedSong['fileType'] ?? 'audio';
+                  }
+
+                  // Build a recent list similar to the section and set playlist queue
+                  final combined = <Map<String, dynamic>>[];
+                  combined.addAll(musicProvider.getDownloadedSongs());
+                  combined.addAll(musicProvider.getImportedSongs());
+                  combined.addAll(musicProvider.library);
+
+                  // De-duplicate by id/url/title
+                  final unique = <String, Map<String, dynamic>>{};
+                  for (final s in combined) {
+                    final key = (s['id'] ?? s['url'] ?? s['title']).toString();
+                    if (key.isNotEmpty && !unique.containsKey(key)) {
+                      // Ensure local songs have usable url
+                      final lp = s['localPath'] ?? s['filePath'];
+                      if ((s['url'] == null || (s['url'] as String).isEmpty) && lp != null) {
+                        s['url'] = lp;
+                        s['localPath'] = lp;
+                        s['isLocal'] = true;
+                      }
+                      unique[key] = s;
+                    }
+                  }
+                  final recent = unique.values.toList();
+                  recent.sort((a, b) {
+                    final aTime = DateTime.tryParse(a['addedAt'] ?? a['lastPlayedAt'] ?? '') ?? DateTime(1970);
+                    final bTime = DateTime.tryParse(b['addedAt'] ?? b['lastPlayedAt'] ?? '') ?? DateTime(1970);
+                    return bTime.compareTo(aTime);
+                  });
+
+                  // Set queue starting from the tapped song
+                  final selectedKey = (preparedSong['id'] ?? preparedSong['url'] ?? preparedSong['title']).toString();
+                  final startIndex = recent.indexWhere((s) => (s['id'] ?? s['url'] ?? s['title']).toString() == selectedKey);
+                  if (startIndex >= 0) {
+                    audioService.setPlaylistQueue(recent, startIndex);
+                  }
+
+                  _navigateToScreen(context, PlayerScreen(song: preparedSong));
                 },
                 padding: const EdgeInsets.all(AppTheme.spacingMedium),
                 showBorder: true,
